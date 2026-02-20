@@ -1,0 +1,22 @@
+# Cypress
+cypress.env.json
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+.specstory/
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

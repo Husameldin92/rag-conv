@@ -1,0 +1,22 @@
+{
+  "name": "rag-con-cypress-tests",
+  "version": "1.0.0",
+  "description": "Cypress automation test suite for RAG-CON",
+  "scripts": {
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "cypress:run:headless": "cypress run --headless",
+    "test": "cypress run"
+  },
+  "keywords": [
+    "cypress",
+    "e2e",
+    "testing",
+    "automation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "cypress": "^13.0.0"
+  }
+}
