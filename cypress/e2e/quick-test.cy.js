@@ -13,6 +13,7 @@
 describe('Quick Test - Three Questions', { testIsolation: false }, () => {
   let reportData = []
   let currentUser = ''
+  let reportTimestamp = ''
   const testQuestions = [
     "What is AI?",
     "How does machine learning work? with examples and use cases",
@@ -22,6 +23,10 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
   ]
 
   before(() => {
+    // Generate unique timestamp for this test run
+    const now = new Date()
+    reportTimestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5) // Format: 2026-02-20T14-30-45
+    
     // Perform both login steps
     cy.authLogin()
     cy.userLogin()
@@ -55,22 +60,25 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       cy.log(`  Question: ${row.question}`)
       cy.log(`  Topic: ${row.topic}`)
       cy.log(`  Synthesis Question: ${row.synthesisQuestion}`)
+      cy.log(`  Response Time: ${row.responseTime} ms`)
     })
     
-    // Write CSV report using Cypress task (runs in Node.js context)
+    // Write CSV report using Cypress task (runs in Node.js context) with unique filename
+    const csvFilename = `quick-test-report-${reportTimestamp}.csv`
     cy.task('writeReport', {
       data: csvContent,
-      filename: 'quick-test-report.csv'
+      filename: csvFilename
     }).then(() => {
-      cy.log(`\nCSV report generated at: cypress/reports/quick-test-report.csv`)
+      cy.log(`\nCSV report generated at: cypress/reports/${csvFilename}`)
     })
     
-    // Write JSON report
+    // Write JSON report with unique filename
+    const jsonFilename = `quick-test-report-${reportTimestamp}.json`
     cy.task('writeReport', {
       data: JSON.stringify(reportData, null, 2),
-      filename: 'quick-test-report.json'
+      filename: jsonFilename
     }).then(() => {
-      cy.log(`JSON report generated at: cypress/reports/quick-test-report.json`)
+      cy.log(`JSON report generated at: cypress/reports/${jsonFilename}`)
     })
   })
 
@@ -80,6 +88,8 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
+      let responseTime = 0
+      let startTime = 0
       
       // Wait until the chat input is unlocked/ready
       cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 30000 })
@@ -102,6 +112,12 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
     // Set up interception BEFORE clicking
     cy.intercept('POST', 'https://concord.sandsmedia.com/graphql').as('graphqlRequest')
     
+    // Record start time just before clicking send (response time measurement starts here)
+    cy.then(() => {
+      startTime = Date.now()
+      cy.log(`⏱️  Response time measurement started at: ${startTime}`)
+    })
+    
     // Click the send button
     cy.get('button.send-button')
       .click()
@@ -120,6 +136,12 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       .should('be.visible')
       .should('not.be.disabled')
       .should('not.have.attr', 'disabled')
+      .then(() => {
+        // Calculate response time when textarea becomes enabled (response is ready)
+        const endTime = Date.now()
+        responseTime = endTime - startTime
+        cy.log(`⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} seconds)`)
+      })
     
     // Wait a bit more for answer to fully render
     cy.wait(5000)
@@ -142,6 +164,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
           question: testQuestion,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          responseTime: responseTime,
           questionNumber: questionIndex + 1
         })
         
@@ -200,6 +223,24 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
               cy.log(`Found "synthes" at index ${synthesisIndex}: ${bodyText.substring(Math.max(0, synthesisIndex - 50), Math.min(bodyText.length, synthesisIndex + 200))}`)
             }
           }
+          
+          // Generate and save reports after page extraction (incremental saving)
+          const csvContent = generateCSV(reportData)
+          const csvFilename = `quick-test-report-${reportTimestamp}.csv`
+          cy.task('writeReport', {
+            data: csvContent,
+            filename: csvFilename
+          }).then(() => {
+            cy.log(`✓ CSV report updated with question ${questionIndex + 1} (from page extraction)`)
+          })
+          
+          const jsonFilename = `quick-test-report-${reportTimestamp}.json`
+          cy.task('writeReport', {
+            data: JSON.stringify(reportData, null, 2),
+            filename: jsonFilename
+          }).then(() => {
+            cy.log(`✓ JSON report updated with question ${questionIndex + 1} (from page extraction)`)
+          })
         })
         
         return
@@ -219,6 +260,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
           question: testQuestion,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          responseTime: responseTime,
           questionNumber: questionIndex + 1
         })
         return
@@ -244,6 +286,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
           question: testQuestion,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          responseTime: responseTime,
           questionNumber: questionIndex + 1
         })
         return
@@ -380,6 +423,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       cy.log(`\n=== FINAL EXTRACTION ===`)
       cy.log(`Topic: ${topic}`)
       cy.log(`Synthesis Question: ${synthesisQuestion}`)
+      cy.log(`Response Time: ${responseTime} ms`)
       
       // Store the data immediately after extraction
       reportData.push({
@@ -387,6 +431,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
         question: testQuestion,
         topic: topic,
         synthesisQuestion: synthesisQuestion,
+        responseTime: responseTime,
         questionNumber: questionIndex + 1
       })
       
@@ -395,6 +440,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       cy.log(`Question: ${testQuestion}`)
       cy.log(`Topic: ${topic}`)
       cy.log(`Synthesis Question: ${synthesisQuestion}`)
+      cy.log(`Response Time: ${responseTime} ms`)
       
       // If still not found, wait a bit and try to get the response from the page
       if (topic === 'Not found' || synthesisQuestion === 'Not found') {
@@ -500,9 +546,28 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
           question: testQuestion,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          responseTime: responseTime,
           questionNumber: questionIndex + 1
         })
       }
+      
+      // Generate and save reports after each question (incremental saving)
+      const csvContent = generateCSV(reportData)
+      const csvFilename = `quick-test-report-${reportTimestamp}.csv`
+      cy.task('writeReport', {
+        data: csvContent,
+        filename: csvFilename
+      }).then(() => {
+        cy.log(`✓ CSV report updated with question ${questionIndex + 1}`)
+      })
+      
+      const jsonFilename = `quick-test-report-${reportTimestamp}.json`
+      cy.task('writeReport', {
+        data: JSON.stringify(reportData, null, 2),
+        filename: jsonFilename
+      }).then(() => {
+        cy.log(`✓ JSON report updated with question ${questionIndex + 1}`)
+      })
     })
     
     // Wait for the response to complete - wait for textarea to be ready again
@@ -517,14 +582,15 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
 
 // Helper function to generate CSV
 function generateCSV(data) {
-  if (data.length === 0) return 'User,Question,Topic,Synthesis Question\n'
+  if (data.length === 0) return 'User,Question,Topic,Synthesis Question,Response Time (ms)\n'
   
-  const headers = ['User', 'Question', 'Topic', 'Synthesis Question']
+  const headers = ['User', 'Question', 'Topic', 'Synthesis Question', 'Response Time (ms)']
   const rows = data.map(row => [
     escapeCSV(row.user),
     escapeCSV(row.question),
     escapeCSV(row.topic),
-    escapeCSV(row.synthesisQuestion)
+    escapeCSV(row.synthesisQuestion),
+    escapeCSV(row.responseTime || 0)
   ])
   
   const csvRows = [headers.join(','), ...rows.map(row => row.join(','))]

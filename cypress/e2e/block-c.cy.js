@@ -19,8 +19,13 @@ const questions = require('../fixtures/questions.json')
 describe('Questions Test Suite', { testIsolation: false }, () => {
   let reportData = []
   let currentUser = ''
+  let reportTimestamp = ''
 
   before(() => {
+    // Generate unique timestamp for this test run
+    const now = new Date()
+    reportTimestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5) // Format: 2026-02-20T14-30-45
+    
     cy.authLogin()
     cy.userLogin()
     
@@ -43,20 +48,33 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
     // Generate CSV report
     const csvContent = generateCSV(reportData)
     
-    // Write CSV report using Cypress task (runs in Node.js context)
-    cy.task('writeReport', {
-      data: csvContent,
-      filename: 'questions-report.csv'
-    }).then(() => {
-      cy.log(`CSV report generated at: cypress/reports/questions-report.csv`)
+    cy.log(`\n=== QUESTIONS TEST REPORT ===`)
+    cy.log(`\nExtracted Data:`)
+    reportData.forEach((row, index) => {
+      cy.log(`\nRow ${index + 1}:`)
+      cy.log(`  User: ${row.user}`)
+      cy.log(`  Question: ${row.question}`)
+      cy.log(`  Topic: ${row.topic}`)
+      cy.log(`  Synthesis Question: ${row.synthesisQuestion}`)
+      cy.log(`  Response Time: ${row.responseTime} ms`)
     })
     
-    // Write JSON report
+    // Write CSV report using Cypress task (runs in Node.js context) with unique filename
+    const csvFilename = `questions-report-${reportTimestamp}.csv`
+    cy.task('writeReport', {
+      data: csvContent,
+      filename: csvFilename
+    }).then(() => {
+      cy.log(`\nCSV report generated at: cypress/reports/${csvFilename}`)
+    })
+    
+    // Write JSON report with unique filename
+    const jsonFilename = `questions-report-${reportTimestamp}.json`
     cy.task('writeReport', {
       data: JSON.stringify(reportData, null, 2),
-      filename: 'questions-report.json'
+      filename: jsonFilename
     }).then(() => {
-      cy.log(`JSON report generated at: cypress/reports/questions-report.json`)
+      cy.log(`JSON report generated at: cypress/reports/${jsonFilename}`)
     })
   })
 
@@ -83,7 +101,14 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
+      let responseTime = 0
+      let startTime = 0
       
+      // Record start time just before clicking send (response time measurement starts here)
+      cy.then(() => {
+        startTime = Date.now()
+        cy.log(`⏱️  Response time measurement started at: ${startTime}`)
+      })
 
       cy.get('button.send-button')
         .click()
@@ -97,6 +122,12 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         .should('be.visible')
         .should('not.be.disabled')
         .should('not.have.attr', 'disabled')
+        .then(() => {
+          // Calculate response time when textarea becomes enabled (response is ready)
+          const endTime = Date.now()
+          responseTime = endTime - startTime
+          cy.log(`⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} seconds)`)
+        })
       
  
       cy.wait(5000)
@@ -138,23 +169,26 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
           question: question,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          responseTime: responseTime,
           questionNumber: index + 1
         })
         
-        cy.log(`Question ${index + 1} data extracted - Topic: ${topic}, Synthesis: ${synthesisQuestion ? synthesisQuestion.substring(0, 50) + '...' : 'N/A'}`)
+        cy.log(`Question ${index + 1} data extracted - Topic: ${topic}, Synthesis: ${synthesisQuestion ? synthesisQuestion.substring(0, 50) + '...' : 'N/A'}, Response Time: ${responseTime} ms`)
         
         // Generate and save reports after each question (incremental saving)
         const csvContent = generateCSV(reportData)
+        const csvFilename = `questions-report-${reportTimestamp}.csv`
         cy.task('writeReport', {
           data: csvContent,
-          filename: 'questions-report.csv'
+          filename: csvFilename
         }).then(() => {
           cy.log(`✓ CSV report updated with question ${index + 1}`)
         })
         
+        const jsonFilename = `questions-report-${reportTimestamp}.json`
         cy.task('writeReport', {
           data: JSON.stringify(reportData, null, 2),
-          filename: 'questions-report.json'
+          filename: jsonFilename
         }).then(() => {
           cy.log(`✓ JSON report updated with question ${index + 1}`)
         })
@@ -168,14 +202,15 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
 
 // Helper function to generate CSV
 function generateCSV(data) {
-  if (data.length === 0) return 'User,Question,Topic,Synthesis Question\n'
+  if (data.length === 0) return 'User,Question,Topic,Synthesis Question,Response Time (ms)\n'
   
-  const headers = ['User', 'Question', 'Topic', 'Synthesis Question']
+  const headers = ['User', 'Question', 'Topic', 'Synthesis Question', 'Response Time (ms)']
   const rows = data.map(row => [
     escapeCSV(row.user),
     escapeCSV(row.question),
     escapeCSV(row.topic),
-    escapeCSV(row.synthesisQuestion)
+    escapeCSV(row.synthesisQuestion),
+    escapeCSV(row.responseTime || 0)
   ])
   
   const csvRows = [headers.join(','), ...rows.map(row => row.join(','))]
