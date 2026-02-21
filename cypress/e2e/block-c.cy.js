@@ -90,9 +90,6 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
       
-      // Set up interception BEFORE clicking
-      cy.intercept('POST', 'https://concord.sandsmedia.com/graphql').as('graphqlRequest')
-      
       // Click the send button
       cy.get('button.send-button')
         .click()
@@ -112,8 +109,7 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       // Wait a bit more for answer to fully render
       cy.wait(5000)
       
-      // Now try to extract from page (most reliable method)
-      // We'll extract from page content since API requests may have already completed
+      // Extract from page (most reliable method)
       cy.get('body', { timeout: 10000 }).then(($body) => {
         const bodyText = $body.text()
         
@@ -128,6 +124,7 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         
         if (lastTopicMatch && lastTopicMatch[1]) {
           topic = lastTopicMatch[1].trim()
+          cy.log(`✓ Found topic on page: "${topic}"`)
         }
         
         // Find the LAST occurrence of "Synthesised question:" (most recent answer)
@@ -141,100 +138,10 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         
         if (lastSynthesisMatch && lastSynthesisMatch[1]) {
           synthesisQuestion = lastSynthesisMatch[1].trim()
-        }
-      })
-      
-      // Store the data after extraction
-      cy.then(() => {
-        // Try API extraction first if we have an interception
-        if (answerInterception) {
-          const responseBody = answerInterception.response.body
-          const userRags = responseBody.data.userRags.UserRags
-          
-          // Check each UserRag, starting from the most recent
-          for (let i = userRags.length - 1; i >= 0; i--) {
-            const rag = userRags[i]
-            if (rag.turns && rag.turns.length > 0) {
-              const lastTurn = rag.turns[rag.turns.length - 1]
-              
-              // Try to match this turn to the current question
-              const questionMatches = lastTurn.question && (
-                lastTurn.question.toLowerCase().includes(question.toLowerCase().substring(0, 20)) ||
-                question.toLowerCase().includes(lastTurn.question.toLowerCase().substring(0, 20))
-              )
-              
-              if (lastTurn.answer && (questionMatches || rag.turns.length === 1)) {
-                const answerText = lastTurn.answer
-                
-                // Extract using simple string methods
-                const topicStart = answerText.indexOf('Question topics:')
-                const synthesisStart = answerText.indexOf('Synthesised question:')
-                
-                if (topicStart > -1 && synthesisStart > -1) {
-                  // Extract topic between the two markers
-                  const topicText = answerText.substring(topicStart + 'Question topics:'.length, synthesisStart)
-                  topic = topicText.trim().replace(/\\n/g, '').replace(/\n/g, '').replace(/\s+/g, ' ').trim()
-                  
-                  // Extract synthesis question
-                  const afterSynthesis = answerText.substring(synthesisStart + 'Synthesised question:'.length)
-                  
-                  // Find where the next section starts (look for newline followed by capital letter)
-                  const nextCapMatch = afterSynthesis.match(/\n\s*([A-Z])/)
-                  if (nextCapMatch) {
-                    const nextCapIndex = afterSynthesis.indexOf(nextCapMatch[0])
-                    synthesisQuestion = afterSynthesis.substring(0, nextCapIndex).trim()
-                  } else {
-                    // If no capital letter found, take until first newline or first 200 chars
-                    const firstNewline = afterSynthesis.indexOf('\n')
-                    synthesisQuestion = firstNewline > -1 
-                      ? afterSynthesis.substring(0, firstNewline).trim()
-                      : afterSynthesis.substring(0, 200).trim()
-                  }
-                  
-                  synthesisQuestion = synthesisQuestion.replace(/\\n/g, '').replace(/\n/g, '').replace(/\s+/g, ' ').trim()
-                  
-                  // Found it, break out of the loop
-                  break
-                }
-              }
-            }
-          }
+          cy.log(`✓ Found synthesis on page: "${synthesisQuestion}"`)
         }
         
-        // If API extraction didn't work, try page extraction
-        if (topic === 'Not found' || synthesisQuestion === 'Not found') {
-          cy.get('body', { timeout: 10000 }).then(($body) => {
-            const bodyText = $body.text()
-            
-            // Find the LAST occurrence of "Question topics:" (most recent answer)
-            const topicPattern = /Question topics?:\s*([^\n]+)/gi
-            let topicMatch = null
-            let lastTopicMatch = null
-            
-            while ((topicMatch = topicPattern.exec(bodyText)) !== null) {
-              lastTopicMatch = topicMatch
-            }
-            
-            if (lastTopicMatch && lastTopicMatch[1]) {
-              topic = lastTopicMatch[1].trim()
-            }
-            
-            // Find the LAST occurrence of "Synthesised question:" (most recent answer)
-            const synthesisPattern = /Synthesised question:\s*([^\n]+)/gi
-            let synthesisMatch = null
-            let lastSynthesisMatch = null
-            
-            while ((synthesisMatch = synthesisPattern.exec(bodyText)) !== null) {
-              lastSynthesisMatch = synthesisMatch
-            }
-            
-            if (lastSynthesisMatch && lastSynthesisMatch[1]) {
-              synthesisQuestion = lastSynthesisMatch[1].trim()
-            }
-          })
-        }
-        
-        // Store the data
+        // Store the data AFTER extraction completes
         reportData.push({
           user: currentUser,
           question: question,
@@ -244,6 +151,22 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         })
         
         cy.log(`Question ${index + 1} data extracted - Topic: ${topic}, Synthesis: ${synthesisQuestion ? synthesisQuestion.substring(0, 50) + '...' : 'N/A'}`)
+        
+        // Generate and save reports after each question (incremental saving)
+        const csvContent = generateCSV(reportData)
+        cy.task('writeReport', {
+          data: csvContent,
+          filename: 'questions-report.csv'
+        }).then(() => {
+          cy.log(`✓ CSV report updated with question ${index + 1}`)
+        })
+        
+        cy.task('writeReport', {
+          data: JSON.stringify(reportData, null, 2),
+          filename: 'questions-report.json'
+        }).then(() => {
+          cy.log(`✓ JSON report updated with question ${index + 1}`)
+        })
       })
       
       // Note: We already waited for textarea above, so we're done
