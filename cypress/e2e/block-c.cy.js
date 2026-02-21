@@ -14,7 +14,6 @@
 
 // Load questions synchronously at parse time so Cypress can discover tests
 const questions = require('../fixtures/questions.json')
-// Note: fs and path are not available in browser context
 // File writing is handled via cy.task() in cypress.config.js
 
 describe('Questions Test Suite', { testIsolation: false }, () => {
@@ -22,20 +21,16 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
   let currentUser = ''
 
   before(() => {
-    // Perform both login steps once before all tests
-    // This will navigate to https://staging.entwickler.de/reader/intelligence after login
     cy.authLogin()
     cy.userLogin()
     
-    // Wait for the intelligence page to fully load before starting tests
+
     cy.url({ timeout: 15000 }).should('include', '/reader/intelligence')
     
-    // Wait for the composer component to be present on the page
     cy.get('readerapp-ai-search-composer', { timeout: 15000 })
       .should('exist')
       .should('be.visible')
     
-    // Wait for the textarea to be ready
     cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 15000 })
       .should('exist')
       .should('be.visible')
@@ -65,7 +60,7 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
     })
   })
 
-  // Generate a test for each question - all in the same chat session
+
   questions.forEach((question, index) => {
     it(`Question ${index + 1}: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`, () => {
       // Wait until the chat input is unlocked/ready for the next question
@@ -80,7 +75,6 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         .clear()
         .type(question, { force: true })
       
-      // Wait for the send button to be enabled (it starts disabled)
       cy.get('button.send-button', { timeout: 10000 })
         .should('be.visible')
         .should('not.be.disabled')
@@ -90,26 +84,23 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
       
-      // Click the send button
+
       cy.get('button.send-button')
         .click()
       
-      // Wait for the send button to be disabled (indicating request is being processed)
       cy.get('button.send-button', { timeout: 5000 })
         .should('have.attr', 'disabled')
       
-      // Wait for answer to appear on page FIRST (this is the most reliable)
-      // The textarea becomes enabled again when answer is ready
+      
       cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 120000 })
         .should('exist')
         .should('be.visible')
         .should('not.be.disabled')
         .should('not.have.attr', 'disabled')
       
-      // Wait a bit more for answer to fully render
+ 
       cy.wait(5000)
       
-      // Extract from page (most reliable method)
       cy.get('body', { timeout: 10000 }).then(($body) => {
         const bodyText = $body.text()
         
@@ -169,7 +160,7 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
         })
       })
       
-      // Note: We already waited for textarea above, so we're done
+      
       cy.log(`Question ${index + 1} response received and input is ready for next question`)
     })
   })
