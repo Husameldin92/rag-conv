@@ -3,6 +3,8 @@ cypress.env.json
 cypress/videos/
 cypress/screenshots/
 cypress/downloads/
+cypress/reports/
+cypress/debug/
 
 # Dependencies
 node_modules/

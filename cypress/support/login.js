@@ -60,25 +60,52 @@ Cypress.Commands.add('userLogin', () => {
     throw new Error('USER_USERNAME and USER_PASSWORD must be set in cypress.env.json')
   }
 
-  cy.log('Performing user login (app login)')
-  
-  cy.get('#username').type(userUsername)
-  cy.get('#password').type(userPassword)
-  cy.get(':nth-child(5) > .woocommerce-Button').click()
-
-  // Handle case where staging might request password again
-  cy.get('body').then(($body) => {
-    if ($body.find('#password:visible').length > 0) {
+  // Check if already logged in (on intelligence page)
+  cy.url().then((currentUrl) => {
+    if (currentUrl.includes('/reader/intelligence')) {
+      cy.log('Already logged in, skipping login')
+      // Just ensure we're on the intelligence page
+      cy.url({ timeout: 5000 }).should('include', '/reader/intelligence')
+      return
+    }
+    
+    // Check if login form is present
+    cy.get('body').then(($body) => {
+      const hasLoginForm = $body.find('#username').length > 0
+      
+      if (!hasLoginForm && !currentUrl.includes('/login')) {
+        cy.log('Already logged in, navigating to intelligence page')
+        cy.visitWithAuth('https://staging.entwickler.de/reader/intelligence')
+        cy.url({ timeout: 15000 }).should('include', '/reader/intelligence')
+        return
+      }
+      
+      // Need to login
+      cy.log('Performing user login (app login)')
+      
+      cy.get('#username', { timeout: 10000 }).type(userUsername)
       cy.get('#password').type(userPassword)
       cy.get(':nth-child(5) > .woocommerce-Button').click()
-    }
+
+      // Handle case where staging might request password again
+      cy.get('body').then(($body) => {
+        if ($body.find('#password:visible').length > 0) {
+          cy.get('#password').type(userPassword)
+          cy.get(':nth-child(5) > .woocommerce-Button').click()
+        }
+      })
+      
+      // Wait for login to complete
+      cy.url({ timeout: 10000 }).should('not.include', '/login')
+    })
   })
   
-  // Wait for login to complete - adjust timeout and condition as needed
-  cy.url({ timeout: 10000 }).should('not.include', '/login')
-  
-  // Navigate to the intelligence page after login
-  cy.visitWithAuth('https://staging.entwickler.de/reader/intelligence')
+  // Navigate to the intelligence page after login (or if already there, just verify)
+  cy.url().then((currentUrl) => {
+    if (!currentUrl.includes('/reader/intelligence')) {
+      cy.visitWithAuth('https://staging.entwickler.de/reader/intelligence')
+    }
+  })
   
   // Wait for the intelligence page to fully load
   cy.url({ timeout: 15000 }).should('include', '/reader/intelligence')
