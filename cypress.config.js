@@ -29,10 +29,14 @@ module.exports = defineConfig({
         }
       })
     },
-    baseUrl: 'https://staging.entwickler.de', // Update with your staging URL
+    baseUrl: 'https://staging.entwickler.de',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
     supportFile: 'cypress/support/e2e.js',
-    // Prevent Cypress from clearing the page between tests
+    
     testIsolation: false,
+    // Video recording settings - enabled by default but explicitly set here
+    video: true, // Enable video recording for all tests
+    videoCompression: 32, // Compression quality (0-51, lower = better quality but larger files)
+    videosFolder: 'cypress/videos', // Where to save videos
   },
 })
