@@ -46,7 +46,7 @@ cypress/
    ```
 
 3. **Update Cypress configuration:**
-   Edit `cypress.config.js` and update the `baseUrl` with your staging URL.
+   Edit `cypress.config.js` and update the `baseUrl` with staging URL.
 
 4. **Update selectors in test files (if needed):**
    - Review `cypress/support/login.js` and update selectors for auth and user login forms if they change
