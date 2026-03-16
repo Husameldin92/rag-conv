@@ -63,7 +63,6 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
     'Content-Type': 'application/json',
   };
 
-  // Add optional authentication headers
   if (process.env.AUTH_TOKEN) {
     headers['access-token'] = process.env.AUTH_TOKEN;
   }
@@ -71,25 +70,14 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
     headers['Cookie'] = process.env.COOKIE;
   }
 
-  const requestBody = {
-    query: DISCOVERY_QUERY,
-    variables
-  };
-
-  // Debug: log first request to see what we're sending
-  if (!global._loggedFirstRequest) {
-    console.log('\n📤 First API Request:');
-    console.log('URL:', GRAPHQL_ENDPOINT);
-    console.log('Headers:', JSON.stringify(headers, null, 2));
-    console.log('Body:', JSON.stringify(requestBody, null, 2));
-    global._loggedFirstRequest = true;
-  }
-
   try {
     const response = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers,
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify({
+        query: DISCOVERY_QUERY,
+        variables
+      })
     });
 
     if (!response.ok) {
@@ -100,27 +88,10 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
       throw new Error(`HTTP error! status: ${response.status}, body: ${errorText.substring(0, 200)}`);
     }
 
-    const responseText = await response.text();
-    let data;
-    
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse JSON response:', responseText.substring(0, 500));
-      throw new Error(`Invalid JSON response: ${parseError.message}`);
-    }
+    const data = await response.json();
     
     if (data.errors) {
-      console.error('GraphQL Errors:', JSON.stringify(data.errors, null, 2));
       throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
-    }
-
-    // Debug: log first response to see structure
-    if (!global._loggedFirstResponse) {
-      console.log('\n📋 First API Response:');
-      console.log('Status:', response.status);
-      console.log('Response:', JSON.stringify(data, null, 2).substring(0, 2000));
-      global._loggedFirstResponse = true;
     }
 
     // Check if data.data exists and has discovery
@@ -129,18 +100,7 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
       return null;
     }
 
-    const discovery = data.data.discovery;
-    
-    // Check if discovery has actual data
-    if (!discovery.results || discovery.results.length === 0) {
-      if (!global._loggedEmptyResponse) {
-        console.log('\n⚠️  Empty results in response. Full discovery object:');
-        console.log(JSON.stringify(discovery, null, 2));
-        global._loggedEmptyResponse = true;
-      }
-    }
-
-    return discovery;
+    return data.data.discovery;
   } catch (error) {
     console.error(`Error calling API for question "${question.substring(0, 50)}...":`, error.message);
     return null;
