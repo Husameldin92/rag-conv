@@ -12,34 +12,30 @@ const __dirname = path.dirname(__filename);
 // GraphQL endpoint
 const GRAPHQL_ENDPOINT = process.env.GRAPHQL_ENDPOINT || 'https://concord.sandsmedia.com/graphql';
 
-// GraphQL query (formatted exactly as frontend)
-const DISCOVERY_QUERY = `query (
-  $question: String!
-  $restriction: RESTRICTION_TYPE!
-  $enableConversation: Boolean!
-) {
+// Generate GraphQL query with question embedded
+function buildQuery(question) {
+  // Escape quotes in question for GraphQL string
+  const escapedQuestion = question.replace(/"/g, '\\"');
+  
+  return `query {
   discoveryTest(
-    question: $question
-    restriction: $restriction
-    enableConversation: $enableConversation
+    restriction: NONE
+    question: "${escapedQuestion}"
+    enableConversation: true
   ) {
     results {
       _id
-      slug
-      schemaType
+      parentGenre
+      parentName
+      parentId
       title
-      brandName
-      supportedApps
-      isHidden
-      __typename
+      sortDate
     }
     streamUrl
-    mdMessage
     userRagId
-    chunks
-    __typename
   }
 }`;
+}
 
 // Load questions from the fixtures file
 function loadQuestions() {
@@ -49,14 +45,9 @@ function loadQuestions() {
 }
 
 // Call the discovery API
-async function callDiscoveryAPI(question, restriction = 'NONE', enableConversation = true) {
-  const variables = {
-    question,
-    restriction,
-    enableConversation,
-    userRagId: '',
-    pocIds: []
-  };
+async function callDiscoveryAPI(question) {
+  // Build query with question embedded
+  const query = buildQuery(question);
 
   // Build headers
   const headers = {
@@ -72,8 +63,7 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
       method: 'POST',
       headers,
       body: JSON.stringify({
-        query: DISCOVERY_QUERY,
-        variables
+        query
       })
     });
 
@@ -138,7 +128,6 @@ function saveCSVReport(results, filename) {
     'Results Count',
     'Stream URL',
     'User RAG ID',
-    'Chunks Count',
     'Results (JSON)'
   ];
   
@@ -150,7 +139,6 @@ function saveCSVReport(results, filename) {
       result.results?.length || 0,
       result.streamUrl || '',
       result.userRagId || '',
-      result.chunks?.length || 0,
       `"${resultsJson.replace(/"/g, '""')}"`
     ].join(',');
   });
@@ -187,7 +175,7 @@ async function main() {
     console.log(`[${questionNum}/${questions.length}] Processing: "${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"`);
     
     const startTime = Date.now();
-    const discoveryResult = await callDiscoveryAPI(question, 'NONE', true);
+    const discoveryResult = await callDiscoveryAPI(question);
     const endTime = Date.now();
     const responseTime = endTime - startTime;
     
@@ -198,7 +186,7 @@ async function main() {
         responseTime,
         ...discoveryResult
       });
-      console.log(`   ✅ Success (${responseTime}ms) - Results: ${discoveryResult.results?.length || 0}, Chunks: ${discoveryResult.chunks?.length || 0}`);
+      console.log(`   ✅ Success (${responseTime}ms) - Results: ${discoveryResult.results?.length || 0}`);
     } else {
       results.push({
         questionNumber: questionNum,
