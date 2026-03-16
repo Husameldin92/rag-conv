@@ -18,7 +18,7 @@ const DISCOVERY_QUERY = `query (
   $restriction: RESTRICTION_TYPE!
   $enableConversation: Boolean!
 ) {
-  discovery(
+  discoveryTest(
     question: $question
     restriction: $restriction
     enableConversation: $enableConversation
@@ -92,12 +92,12 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
     }
 
     // Check if data.data exists and has discovery or discoveryTest
-    if (!data.data || !data.data.discovery) {
+    if (!data.data || !data.data.discoveryTest) {
       console.warn(`⚠️  Unexpected response structure:`, JSON.stringify(data, null, 2));
       return null;
     }
 
-    return data.data.discovery;
+    return data.data.discoveryTest;
   } catch (error) {
     console.error(`Error calling API for question "${question.substring(0, 50)}...":`, error.message);
     return null;
@@ -210,8 +210,8 @@ async function main() {
     }
     
     // Save incrementally after each question
-    const jsonFilename = `discovery-report-${timestamp}.json`;
-    const csvFilename = `discovery-report-${timestamp}.csv`;
+    const jsonFilename = `discoveryTest-report-${timestamp}.json`;  
+    const csvFilename = `discoveryTest-report-${timestamp}.csv`;
     saveJSONReport(results, jsonFilename);
     saveCSVReport(results, csvFilename);
     
