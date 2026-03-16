@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "discovery": "node src/index.js discovery",
     "discoveryTest": "node src/index.js discoveryTest",
-    "compare": "node src/compare.js"
+    "compare": "node src/compare.js",
+    "quick-test": "node src/quick-test.js"
   },
   "keywords": [
     "graphql",
