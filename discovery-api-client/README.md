@@ -29,6 +29,11 @@ After running both queries, compare the latest reports:
 npm run compare
 ```
 
+### Run discovery query
+```bash
+npm run quick-test
+```
+
 ## How It Works
 
 1. **Loads questions** from `fixtures/questions.json`
