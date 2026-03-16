@@ -66,9 +66,6 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
   if (process.env.AUTH_TOKEN) {
     headers['access-token'] = process.env.AUTH_TOKEN;
   }
-  if (process.env.COOKIE) {
-    headers['Cookie'] = process.env.COOKIE;
-  }
 
   try {
     const response = await fetch(GRAPHQL_ENDPOINT, {
@@ -83,7 +80,7 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
     if (!response.ok) {
       const errorText = await response.text();
       if (response.status === 401 || response.status === 403) {
-        throw new Error(`Authentication failed (${response.status}). The API may require authentication. Check your .env file for AUTH_TOKEN or COOKIE.`);
+        throw new Error(`Authentication failed (${response.status}). The API may require authentication. Check your .env file for AUTH_TOKEN.`);
       }
       throw new Error(`HTTP error! status: ${response.status}, body: ${errorText.substring(0, 200)}`);
     }
@@ -94,7 +91,7 @@ async function callDiscoveryAPI(question, restriction = 'NONE', enableConversati
       throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
     }
 
-    // Check if data.data exists and has discovery
+    // Check if data.data exists and has discovery or discoveryTest
     if (!data.data || !data.data.discovery) {
       console.warn(`⚠️  Unexpected response structure:`, JSON.stringify(data, null, 2));
       return null;
@@ -171,10 +168,8 @@ async function main() {
   // Check authentication
   if (process.env.AUTH_TOKEN) {
     console.log('🔐 Using access-token authentication\n');
-  } else if (process.env.COOKIE) {
-    console.log('🍪 Using Cookie authentication\n');
   } else {
-    console.log('⚠️  No authentication configured. If the API requires auth, add AUTH_TOKEN or COOKIE to your .env file\n');
+    console.log('⚠️  No authentication configured. If the API requires auth, add AUTH_TOKEN to your .env file\n');
   }
   
   // Load questions

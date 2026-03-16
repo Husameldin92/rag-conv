@@ -6,10 +6,7 @@
  * 1. Typing the question into the chat input
  * 2. Submitting the question
  * 3. Waiting for the response
- * 4. Extracting: User, Question, Topic, Synthesis Question from API response
- * 5. Generating a CSV/JSON report
- * 
- * Each question is a separate test case for easy failure identification.
+ * 4. Generating a CSV/JSON report
  */
 
 // Load questions synchronously at parse time so Cypress can discover tests
