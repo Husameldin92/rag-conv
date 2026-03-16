@@ -13,12 +13,12 @@ const __dirname = path.dirname(__filename);
 const GRAPHQL_ENDPOINT = process.env.GRAPHQL_ENDPOINT || 'https://concord.sandsmedia.com/graphql';
 
 // Generate GraphQL query with question embedded
-function buildQuery(question) {
+function buildQuery(question, queryType) {
   // Escape quotes in question for GraphQL string
   const escapedQuestion = question.replace(/"/g, '\\"');
   
   return `query {
-  discoveryTest(
+  ${queryType}(
     restriction: NONE
     question: "${escapedQuestion}"
     enableConversation: true
@@ -45,9 +45,9 @@ function loadQuestions() {
 }
 
 // Call the discovery API
-async function callDiscoveryAPI(question) {
+async function callDiscoveryAPI(question, queryType) {
   // Build query with question embedded
-  const query = buildQuery(question);
+  const query = buildQuery(question, queryType);
 
   // Build headers
   const headers = {
@@ -81,13 +81,13 @@ async function callDiscoveryAPI(question) {
       throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
     }
 
-    // Check if data.data exists and has discovery or discoveryTest
-    if (!data.data || !data.data.discoveryTest) {
+    // Check if data.data exists and has the query type
+    if (!data.data || !data.data[queryType]) {
       console.warn(`⚠️  Unexpected response structure:`, JSON.stringify(data, null, 2));
       return null;
     }
 
-    return data.data.discoveryTest;
+    return data.data[queryType];
   } catch (error) {
     console.error(`Error calling API for question "${question.substring(0, 50)}...":`, error.message);
     return null;
@@ -150,8 +150,18 @@ function saveCSVReport(results, filename) {
 
 // Main function
 async function main() {
-  console.log('🚀 Starting Discovery API Client...\n');
-  console.log(`📡 GraphQL Endpoint: ${GRAPHQL_ENDPOINT}\n`);
+  // Get query type from command line argument or default to discoveryTest
+  const queryType = process.argv[2] || 'discoveryTest';
+  
+  if (queryType !== 'discovery' && queryType !== 'discoveryTest') {
+    console.error('❌ Invalid query type. Use "discovery" or "discoveryTest"');
+    process.exit(1);
+  }
+  
+  // Verify which query will be used
+  console.log(`🚀 Starting ${queryType} API Client...\n`);
+  console.log(`📡 GraphQL Endpoint: ${GRAPHQL_ENDPOINT}`);
+  console.log(`🔍 Query Type: ${queryType} (will use ${queryType} query)\n`);
   
   // Check authentication
   if (process.env.AUTH_TOKEN) {
@@ -175,7 +185,7 @@ async function main() {
     console.log(`[${questionNum}/${questions.length}] Processing: "${question.substring(0, 60)}${question.length > 60 ? '...' : ''}"`);
     
     const startTime = Date.now();
-    const discoveryResult = await callDiscoveryAPI(question);
+    const discoveryResult = await callDiscoveryAPI(question, queryType);
     const endTime = Date.now();
     const responseTime = endTime - startTime;
     
@@ -198,14 +208,14 @@ async function main() {
     }
     
     // Save incrementally after each question
-    const jsonFilename = `discoveryTest-report-${timestamp}.json`;  
-    const csvFilename = `discoveryTest-report-${timestamp}.csv`;
+    const jsonFilename = `${queryType}-report-${timestamp}.json`;  
+    const csvFilename = `${queryType}-report-${timestamp}.csv`;
     saveJSONReport(results, jsonFilename);
     saveCSVReport(results, csvFilename);
     
     // Small delay to avoid rate limiting
     if (i < questions.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 10000));
     }
     
     console.log('');
