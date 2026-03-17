@@ -215,7 +215,7 @@ async function main() {
     
     // Small delay to avoid rate limiting
     if (i < questions.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5 seconds
     }
     
     console.log('');

@@ -10,8 +10,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const GRAPHQL_ENDPOINT = process.env.GRAPHQL_ENDPOINT || 'https://concord.sandsmedia.com/graphql';
-const NUM_QUESTIONS = 2;
-const DELAY_MS = 10000; // 10 seconds between questions
+const DELAY_MS = 5000;
+
+const DEFAULT_QUESTION = 'How does Kubernetes autoscaling work?';
 
 function buildQuery(question, queryType) {
   const escapedQuestion = question.replace(/"/g, '\\"');
@@ -35,11 +36,6 @@ function buildQuery(question, queryType) {
 }`;
 }
 
-function loadQuestions() {
-  const questionsPath = path.join(__dirname, '../fixtures/questions.json');
-  return JSON.parse(fs.readFileSync(questionsPath, 'utf-8'));
-}
-
 async function callAPI(question, queryType) {
   const headers = { 'Content-Type': 'application/json' };
   if (process.env.AUTH_TOKEN) {
@@ -55,81 +51,125 @@ async function callAPI(question, queryType) {
   return { status: response.status, ok: response.ok, body: await response.text() };
 }
 
-async function runQuickTest() {
-  const allQuestions = loadQuestions();
-  const questions = [allQuestions[0], 'Is there a JAX in the next month?'];
+async function fetchStreamContent(streamUrl) {
+  if (!streamUrl) return null;
 
-  console.log(`\n🧪 Quick test: ${NUM_QUESTIONS} questions, ${DELAY_MS / 1000}s between each\n`);
+  const headers = {};
+  if (process.env.AUTH_TOKEN) {
+    headers['access-token'] = process.env.AUTH_TOKEN;
+  }
+
+  try {
+    const response = await fetch(streamUrl, { headers });
+    const text = await response.text();
+
+    if (!response.ok) {
+      return { error: text };
+    }
+
+    // Try JSON first (e.g. {"content":"..."} or {"text":"..."})
+    try {
+      const json = JSON.parse(text);
+      if (json.error) return { error: json.error };
+      const content = json.content ?? json.text ?? json.data ?? json.message ?? json.answer;
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) return content.map(c => c.text ?? c.content ?? c).join('\n');
+      if (content && typeof content === 'object') return JSON.stringify(content);
+    } catch (_) {
+      // Not JSON
+    }
+
+    // SSE format: data: {...}\n\n
+    const lines = text.split('\n');
+    const chunks = [];
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const chunk = line.slice(6);
+        if (chunk === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(chunk);
+          const delta = parsed.choices?.[0]?.delta?.content ?? parsed.content ?? parsed.text ?? parsed;
+          if (delta) chunks.push(typeof delta === 'string' ? delta : JSON.stringify(delta));
+        } catch (_) {
+          chunks.push(chunk);
+        }
+      }
+    }
+    if (chunks.length > 0) return chunks.join('');
+
+    return text.trim() || null;
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+function escapeCsv(value) {
+  if (value == null) return '""';
+  const s = String(value);
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+async function runQuickTest() {
+  const question = process.argv[2] || DEFAULT_QUESTION;
+  console.log(`\n🧪 Quick test: 1 question, fetching answer text from stream URLs\n`);
+  console.log(`   Question: "${question}"\n`);
 
   const reportsDir = path.join(__dirname, '../reports');
   if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
 
-  for (const queryType of ['discoveryTest', 'discovery']) {
-    const results = [];
-    const output = {
-      timestamp: new Date().toISOString(),
-      queryType,
-      config: { numQuestions: NUM_QUESTIONS, delaySeconds: DELAY_MS / 1000 },
-      results
-    };
+  let discoveryAnswer = null;
+  let discoveryTestAnswer = null;
 
-    console.log(`\n--- ${queryType} ---\n`);
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      console.log(`[${i + 1}/${NUM_QUESTIONS}] "${q.substring(0, 50)}..."`);
-
-      const { status, ok, body } = await callAPI(q, queryType);
-
-      const entry = {
-        questionNumber: i + 1,
-        question: q,
-        status,
-        success: ok,
-        resultsCount: null,
-        error: null,
-        data: null
-      };
-
-      if (status === 429) {
-        console.log(`   ❌ 429 Rate limit exceeded!`);
-        console.log(`   Body: ${body.substring(0, 150)}...`);
-        entry.error = '429 Rate limit exceeded';
-        entry.data = { bodyPreview: body.substring(0, 300) };
-      } else if (ok) {
-        try {
-          const data = JSON.parse(body);
-          const payload = data?.data?.[queryType];
-          const count = payload?.results?.length ?? 0;
-          console.log(`   ✅ Success - ${count} results`);
-          entry.resultsCount = count;
-          entry.data = payload;
-        } catch (e) {
-          entry.error = `Parse error: ${e.message}`;
-          entry.data = { bodyPreview: body.substring(0, 300) };
-        }
-      } else {
-        console.log(`   ❌ HTTP ${status}`);
-        console.log(`   Body: ${body.substring(0, 150)}...`);
-        entry.error = `HTTP ${status}`;
-        entry.data = { bodyPreview: body.substring(0, 300) };
-      }
-
-      results.push(entry);
-
-      if (i < questions.length - 1) {
-        console.log(`   ⏳ Waiting ${DELAY_MS / 1000}s...`);
-        await new Promise(r => setTimeout(r, DELAY_MS));
-      }
+  // discovery
+  console.log(`[discovery] Calling API...`);
+  const { status: s1, ok: ok1, body: body1 } = await callAPI(question, 'discovery');
+  if (ok1) {
+    const payload = JSON.parse(body1)?.data?.discovery;
+    const streamUrl = payload?.streamUrl;
+    console.log(`[discovery] Fetching stream...`);
+    discoveryAnswer = await fetchStreamContent(streamUrl);
+    if (discoveryAnswer && typeof discoveryAnswer === 'object' && discoveryAnswer.error) {
+      console.log(`   ⚠️  Stream: ${discoveryAnswer.error}`);
+      discoveryAnswer = null;
+    } else if (discoveryAnswer) {
+      console.log(`   ✅ Got ${discoveryAnswer.length} chars`);
     }
-
-    const jsonPath = path.join(reportsDir, `quick-test-${queryType}-${timestamp}.json`);
-    fs.writeFileSync(jsonPath, JSON.stringify(output, null, 2));
-    console.log(`   📄 Saved: ${jsonPath}`);
+  } else {
+    console.log(`   ❌ HTTP ${s1}`);
   }
 
-  console.log('\n✅ Quick test done.\n');
+  await new Promise(r => setTimeout(r, DELAY_MS));
+
+  // discoveryTest
+  console.log(`\n[discoveryTest] Calling API...`);
+  const { status: s2, ok: ok2, body: body2 } = await callAPI(question, 'discoveryTest');
+  if (ok2) {
+    const payload = JSON.parse(body2)?.data?.discoveryTest;
+    const streamUrl = payload?.streamUrl;
+    console.log(`[discoveryTest] Fetching stream...`);
+    discoveryTestAnswer = await fetchStreamContent(streamUrl);
+    if (discoveryTestAnswer && typeof discoveryTestAnswer === 'object' && discoveryTestAnswer.error) {
+      console.log(`   ⚠️  Stream: ${discoveryTestAnswer.error}`);
+      discoveryTestAnswer = null;
+    } else if (discoveryTestAnswer) {
+      console.log(`   ✅ Got ${discoveryTestAnswer.length} chars`);
+    }
+  } else {
+    console.log(`   ❌ HTTP ${s2}`);
+  }
+
+  // CSV output
+  const csvPath = path.join(reportsDir, `quick-test-answers-${timestamp}.csv`);
+  const d = typeof discoveryAnswer === 'string' ? discoveryAnswer : '';
+  const t = typeof discoveryTestAnswer === 'string' ? discoveryTestAnswer : '';
+  const csvRows = [
+    'Question,Discovery Answer,DiscoveryTest Answer',
+    `${escapeCsv(question)},${escapeCsv(d)},${escapeCsv(t)}`
+  ];
+  fs.writeFileSync(csvPath, csvRows.join('\n'));
+
+  console.log(`\n✅ CSV saved: ${csvPath}\n`);
 }
 
 runQuickTest().catch(console.error);
