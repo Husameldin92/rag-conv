@@ -5,35 +5,23 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Find latest report file by timestamp
 function findLatestReport(queryType) {
   const reportsDir = path.join(__dirname, '../reports');
   const files = fs.readdirSync(reportsDir);
-
   const csvFiles = files
     .filter(file => file.startsWith(`${queryType}-report-`) && file.endsWith('.csv'))
     .sort()
     .reverse();
-
-  if (csvFiles.length === 0) {
-    return null;
-  }
-
+  if (csvFiles.length === 0) return null;
   return path.join(reportsDir, csvFiles[0]);
 }
 
-// Load CSV report from file path
 function loadCSVReport(csvFilePath) {
-  if (!fs.existsSync(csvFilePath)) {
-    return null;
-  }
-
+  if (!fs.existsSync(csvFilePath)) return null;
   const content = fs.readFileSync(csvFilePath, 'utf-8');
   const lines = content.split('\n').filter(line => line.trim());
-
   const headerValues = parseCSVLine(lines[0]);
   const headers = headerValues.map(h => h.trim());
-
   const data = [];
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
@@ -43,20 +31,16 @@ function loadCSVReport(csvFilePath) {
     });
     data.push(row);
   }
-
   return data;
 }
 
-// Parse CSV line handling quoted fields
 function parseCSVLine(line) {
   const values = [];
   let current = '';
   let inQuotes = false;
-
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const nextChar = line[i + 1];
-
     if (char === '"') {
       if (inQuotes && nextChar === '"') {
         current += '"';
@@ -75,12 +59,8 @@ function parseCSVLine(line) {
   return values;
 }
 
-// Parse JSON results from CSV
 function parseResultsJSON(jsonString) {
-  if (!jsonString || jsonString.trim() === '') {
-    return [];
-  }
-
+  if (!jsonString || jsonString.trim() === '') return [];
   try {
     let cleaned = jsonString.trim();
     if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
@@ -94,15 +74,11 @@ function parseResultsJSON(jsonString) {
   }
 }
 
-// Format POCs with order numbers: "0: id1, 1: id2, 2: id3, ..." or null
-function formatPOCsWithOrder(results) {
-  if (!results || !Array.isArray(results) || results.length === 0) {
-    return 'null';
-  }
-  return results.map((r, index) => `${index}: ${r._id}`).join(', ');
+function formatGenre(genre) {
+  if (genre === null || genre === undefined) return 'READ';
+  return String(genre);
 }
 
-// Main comparison function
 async function compareReports() {
   console.log('🔍 Finding latest reports...\n');
 
@@ -128,7 +104,7 @@ async function compareReports() {
 
   console.log(`📊 Comparing ${discoveryTestData.length} questions...\n`);
 
-  const comparisons = [];
+  const rows = [];
 
   for (let i = 0; i < discoveryTestData.length; i++) {
     const discoveryTest = discoveryTestData[i];
@@ -138,46 +114,71 @@ async function compareReports() {
     const discoveryResults = parseResultsJSON(discovery['Results (JSON)'] || '[]');
 
     const question = discoveryTest['Question'] || discovery['Question'] || '';
-    const discoveryTestPOCs = formatPOCsWithOrder(discoveryTestResults);
-    const discoveryPOCs = formatPOCsWithOrder(discoveryResults);
+    const maxOrder = Math.max(discoveryResults.length, discoveryTestResults.length);
 
-    comparisons.push({
-      questionNumber: discoveryTest['Question Number'] || i + 1,
-      question,
-      discoveryTestPOCs,
-      discoveryPOCs
-    });
+    for (let order = 0; order < maxOrder; order++) {
+      const discoveryPoc = discoveryResults[order];
+      const discoveryTestPoc = discoveryTestResults[order];
+
+      const discoveryPocId = discoveryPoc?._id ?? '-';
+      const discoveryGenre = discoveryPoc ? formatGenre(discoveryPoc.parentGenre) : '-';
+      const discoveryTestPocId = discoveryTestPoc?._id ?? '-';
+      const discoveryTestGenre = discoveryTestPoc ? formatGenre(discoveryTestPoc.parentGenre) : '-';
+
+      let result;
+      if (!discoveryPoc && !discoveryTestPoc) {
+        result = '-';
+      } else if (!discoveryPoc) {
+        result = 'no more POCs for discovery';
+      } else if (!discoveryTestPoc) {
+        result = 'no more POCs for discoveryTest';
+      } else if (discoveryPoc._id === discoveryTestPoc._id) {
+        result = 'match';
+      } else {
+        result = 'different';
+      }
+
+      rows.push({
+        question,
+        order,
+        discovery_POCs: discoveryPocId,
+        discovery_genre: discoveryGenre,
+        discoveryTest: discoveryTestPocId,
+        discoveryTest_genre: discoveryTestGenre,
+        Result: result
+      });
+    }
   }
 
-  // Generate CSV report
   const reportsDir = path.join(__dirname, '../reports');
   const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
   const csvFile = path.join(reportsDir, `comparison-report-${timestamp}.csv`);
 
   const quoteField = (value) => {
-    if (!value || value === 'null') return value || 'null';
-    if (value.includes(',') || value.includes('"')) {
-      return `"${value.replace(/"/g, '""')}"`;
+    if (!value) return value || '-';
+    if (String(value).includes(',') || String(value).includes('"')) {
+      return `"${String(value).replace(/"/g, '""')}"`;
     }
     return value;
   };
 
-  const headers = ['Question Number', 'Question', 'DiscoveryTest POCs (0, 1, 2, ...)', 'Discovery POCs (0, 1, 2, ...)'];
+  const headers = ['question', 'order', 'discovery_POCs', 'discovery_genre', 'discoveryTest', 'discoveryTest_genre', 'Result'];
 
-  const rows = comparisons.map(comp => {
-    return [
-      comp.questionNumber,
-      `"${(comp.question || '').replace(/"/g, '""')}"`,
-      quoteField(comp.discoveryTestPOCs),
-      quoteField(comp.discoveryPOCs)
-    ].join(',');
-  });
+  const csvRows = rows.map(r => [
+    `"${(r.question || '').replace(/"/g, '""')}"`,
+    r.order,
+    quoteField(r.discovery_POCs),
+    quoteField(r.discovery_genre),
+    quoteField(r.discoveryTest),
+    quoteField(r.discoveryTest_genre),
+    quoteField(r.Result)
+  ].join(','));
 
-  const csvContent = [headers.join(','), ...rows].join('\n');
+  const csvContent = [headers.join(','), ...csvRows].join('\n');
   fs.writeFileSync(csvFile, csvContent);
 
   console.log(`✅ Comparison report saved: ${csvFile}`);
-  console.log(`\n📋 Format: Each POC has order number (0, 1, 2, ...). "null" = no results for that query.`);
+  console.log(`📋 Format: One row per question per POC position. "-" = empty. Result: match | different | no more POCs for {queryType}`);
 }
 
 compareReports().catch(console.error);
