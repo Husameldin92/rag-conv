@@ -1,3 +1,7 @@
+// this script extract the answer from the stream URL and save it to a CSV file
+// the purpose is to compare discovery and discoveryTest answers for a single question
+
+
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
