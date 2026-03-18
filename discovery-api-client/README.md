@@ -39,6 +39,11 @@ npm run quick-test
 npm run compare-discoveryTest
 ```
 
+### Compare latest discoveryTest runs (documents, response time)
+```bash
+npm run compare-10-pocs
+```
+
 ## How It Works
 
 1. **Loads questions** from `fixtures/questions.json`
