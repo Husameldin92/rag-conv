@@ -10,7 +10,8 @@
     "discoveryTest": "node src/index.js discoveryTest",
     "compare": "node src/compare.js",
     "quick-test": "node src/quick-test.js",
-    "compare-discoveryTest": "node src/compare-discoveryTest-runs.js"
+    "compare-discoveryTest": "node src/compare-discoveryTest-runs.js",
+    "compare-10-pocs": "node src/compare-10-questions-pocs.js"
   },
   "keywords": [
     "graphql",
