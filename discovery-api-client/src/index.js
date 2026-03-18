@@ -126,6 +126,7 @@ function saveCSVReport(results, filename) {
     'Question Number',
     'Question',
     'Results Count',
+    'Response Time (ms)',
     'Stream URL',
     'User RAG ID',
     'Results (JSON)'
@@ -137,6 +138,7 @@ function saveCSVReport(results, filename) {
       index + 1,
       `"${(result.question || '').replace(/"/g, '""')}"`,
       result.results?.length || 0,
+      result.responseTime ?? '',
       result.streamUrl || '',
       result.userRagId || '',
       `"${resultsJson.replace(/"/g, '""')}"`
