@@ -1,14 +1,6 @@
-//compare the latest discoveryTest runs
-//and save the report to a file
-//the report should include the following:
-//- the latest run
-//- the previous run
-//- the genre distribution
-//- the response time
-//- the zero-result questions
-//- the total POCs
-//- the POCs per question
-//- the per-question response time
+// only compare the discoveryTest API results
+// compare the latest discoveryTest runs and save the report to a file
+// the report should include the genre distribution, response time, zero-result questions, total POCs, POCs per question, and per-question response time
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

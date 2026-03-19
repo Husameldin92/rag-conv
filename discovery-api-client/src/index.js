@@ -1,3 +1,6 @@
+// this is the main script to call the discovery and discoveryTest API with questions
+// it will save the results to a JSON and CSV file
+
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';

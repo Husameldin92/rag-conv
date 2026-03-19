@@ -1,3 +1,7 @@
+// this is for the comparison of the discovery and discoveryTest API results
+// it will compare the results of the discovery and discoveryTest API for each question
+// it will save the results to a CSV file
+// it take the latest discovery and discoveryTest reports and compare them
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

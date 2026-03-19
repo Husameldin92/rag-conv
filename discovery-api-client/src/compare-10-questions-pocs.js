@@ -1,10 +1,6 @@
-/**
- * Compares POC IDs for the 10 questions used in the LLM answer comparison.
- * Output: CSV with question, old_POCs, new_POCs, old genre, new genre, notes.
- *
- * Usage: node src/compare-10-questions-pocs.js
- */
-
+// this is for the comparison of the POC IDs for the 10 questions used in the LLM answer comparison
+// it will compare the POC IDs for the 10 questions and save the results to a CSV file
+// it will save the results to a CSV file with the question, old_POCs, new_POCs, old genre, new genre, notes
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
