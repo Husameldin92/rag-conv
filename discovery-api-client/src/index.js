@@ -28,6 +28,7 @@ function buildQuery(question, queryType) {
   ) {
     results {
       _id
+      score
       parentGenre
       parentName
       parentId

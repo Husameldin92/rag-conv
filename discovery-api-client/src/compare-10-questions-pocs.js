@@ -26,29 +26,31 @@ function escapeCsv(val) {
   return (s.includes(',') || s.includes('"') || s.includes('\n')) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-function findLatestDiscoveryTestReports() {
-  const reportsDir = path.join(__dirname, '../reports');
+const reportsDir = path.join(__dirname, '../reports');
+
+// Old: 3K report (fixed filename)
+const OLD_3K_REPORT = path.join(reportsDir, '3k-discoveryTest-report-2026-03-17T13-15-27.json');
+
+// New: latest discoveryTest report (excluding 3k)
+function findLatestDiscoveryTestReport() {
   const files = fs.readdirSync(reportsDir);
   const jsonFiles = files
-    .filter(f => f.startsWith('discoveryTest-report-') && f.endsWith('.json'))
+    .filter(f => f.startsWith('discoveryTest-report-') && !f.startsWith('3k-') && f.endsWith('.json'))
     .sort()
     .reverse();
-  return jsonFiles.map(f => path.join(reportsDir, f));
+  return jsonFiles.length > 0 ? path.join(reportsDir, jsonFiles[0]) : null;
 }
 
-const reportsDir = path.join(__dirname, '../reports');
-const reports = findLatestDiscoveryTestReports();
-if (reports.length < 2) {
-  console.error('❌ Need at least 2 discoveryTest reports in reports/');
+const newReport = findLatestDiscoveryTestReport();
+if (!newReport || !fs.existsSync(OLD_3K_REPORT)) {
+  console.error('❌ Need 3k-discoveryTest-report-2026-03-17T13-15-27.json and at least one discoveryTest-report-*.json');
   process.exit(1);
 }
-const newReport = reports[0];  // latest
-const oldReport = reports[1];  // previous
 
-console.log(`Comparing: ${path.basename(oldReport)} (old) vs ${path.basename(newReport)} (new)\n`);
+console.log(`Comparing: ${path.basename(OLD_3K_REPORT)} (3K old) vs ${path.basename(newReport)} (1.5K new)\n`);
 
 const newData = JSON.parse(fs.readFileSync(newReport, 'utf-8'));
-const oldData = JSON.parse(fs.readFileSync(oldReport, 'utf-8'));
+const oldData = JSON.parse(fs.readFileSync(OLD_3K_REPORT, 'utf-8'));
 
 const rows = [
   ['question', 'discoveryTest old_POCs', 'old genre', 'discoveryTest new_POCs', 'new genre', 'notes']
@@ -89,3 +91,18 @@ const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const outPath = path.join(reportsDir, `compare-10-questions-pocs-${timestamp}.csv`);
 fs.writeFileSync(outPath, csv);
 console.log(`✅ CSV saved: ${outPath}`);
+
+// Score range from new run (3K has no score)
+const scores = [];
+for (const entry of newData) {
+  for (const r of entry.results || []) {
+    if (typeof r.score === 'number') scores.push(r.score);
+  }
+}
+if (scores.length > 0) {
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  console.log(`\n📊 Score range (new 1.5K run): min=${min.toFixed(4)}, max=${max.toFixed(4)}, count=${scores.length}`);
+} else {
+  console.log(`\n⚠️  No scores in new run (score may not be in API response)`);
+}
