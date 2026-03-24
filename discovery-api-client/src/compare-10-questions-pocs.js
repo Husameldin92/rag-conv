@@ -53,7 +53,7 @@ const newData = JSON.parse(fs.readFileSync(newReport, 'utf-8'));
 const oldData = JSON.parse(fs.readFileSync(OLD_3K_REPORT, 'utf-8'));
 
 const rows = [
-  ['question', 'discoveryTest old_POCs', 'old genre', 'discoveryTest new_POCs', 'new genre', 'notes']
+  ['question', 'discoveryTest old_POCs', 'old genre', 'discoveryTest new_POCs', 'new genre', 'new score', 'notes']
 ];
 
 for (const q of TEN_QUESTIONS) {
@@ -70,6 +70,8 @@ for (const q of TEN_QUESTIONS) {
     const oldGenre = oldResults[i] != null ? (oldResults[i].parentGenre ?? 'READ') : '-';
     const newPoc = newResults[i]?._id ?? '-';
     const newGenre = newResults[i] != null ? (newResults[i].parentGenre ?? 'READ') : '-';
+    const newScore = newResults[i] != null && typeof newResults[i].score === 'number'
+      ? newResults[i].score.toFixed(6) : '-';
 
     let note = '';
     if (oldPoc !== '-' && newPoc !== '-') {
@@ -82,7 +84,7 @@ for (const q of TEN_QUESTIONS) {
       }
     }
 
-    rows.push([q, oldPoc, oldGenre, newPoc, newGenre, note]);
+    rows.push([q, oldPoc, oldGenre, newPoc, newGenre, newScore, note]);
   }
 }
 
@@ -92,17 +94,17 @@ const outPath = path.join(reportsDir, `compare-10-questions-pocs-${timestamp}.cs
 fs.writeFileSync(outPath, csv);
 console.log(`✅ CSV saved: ${outPath}`);
 
-// Score range from new run (3K has no score)
-const scores = [];
+// Vector score range from new run (0.xxx format only; index scores 100+ excluded; 3K has no score)
+const vectorScores = [];
 for (const entry of newData) {
   for (const r of entry.results || []) {
-    if (typeof r.score === 'number') scores.push(r.score);
+    if (typeof r.score === 'number' && r.score >= 0 && r.score <= 1) vectorScores.push(r.score);
   }
 }
-if (scores.length > 0) {
-  const min = Math.min(...scores);
-  const max = Math.max(...scores);
-  console.log(`\n📊 Score range (new 1.5K run): min=${min.toFixed(4)}, max=${max.toFixed(4)}, count=${scores.length}`);
+if (vectorScores.length > 0) {
+  const min = Math.min(...vectorScores);
+  const max = Math.max(...vectorScores);
+  console.log(`\n📊 Vector score range (new 1.5K run): min=${min.toFixed(6)}, max=${max.toFixed(6)}, count=${vectorScores.length}`);
 } else {
-  console.log(`\n⚠️  No scores in new run (score may not be in API response)`);
+  console.log(`\n⚠️  No vector scores in new run (0.xxx format)`);
 }

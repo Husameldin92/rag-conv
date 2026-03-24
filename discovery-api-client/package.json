@@ -11,7 +11,13 @@
     "compare": "node src/compare.js",
     "quick-test": "node src/quick-test.js",
     "compare-discoveryTest": "node src/compare-discoveryTest-runs.js",
-    "compare-10-pocs": "node src/compare-10-questions-pocs.js"
+    "compare-10-pocs": "node src/compare-10-questions-pocs.js",
+    "cited-pocs-vs-scores": "node src/cited-pocs-vs-scores.js",
+    "run-multi-api-test": "node src/run-multi-api-test.js",
+    "compare-one-question": "node src/compare-one-question-pocs.js",
+    "compare-two-csvs": "node src/compare-two-poc-csvs.js",
+    "compare-pocs-and-llm": "node src/compare-pocs-and-llm.js",
+    "run-one-question": "node src/run-one-question.js"
   },
   "keywords": [
     "graphql",
@@ -21,7 +27,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "node-fetch": "^3.3.2",
-    "dotenv": "^16.4.5"
+    "csv-parse": "^6.2.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2"
   }
 }
