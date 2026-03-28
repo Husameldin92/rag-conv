@@ -1,6 +1,13 @@
-// Compare one question across runs: each POC as a row, scores side by side
-// Hardcoded: "How does Kubernetes autoscaling work?"
-
+/**
+ * Analyse multi-run output for ONE question: POC scores side-by-side across runs.
+ *
+ * Prereq: reports/multi-run-* from npm run run-multi-api-test.
+ * Edit QUESTION in this file to match the question you want to analyse.
+ *
+ * Alias: npm run compare-one-question → same script (legacy name).
+ *
+ * See README.md → "analyze-multi-run-one-question".
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -35,7 +42,6 @@ function main() {
     process.exit(1);
   }
 
-  // Support run-original + run-2,3,4 OR run-1,2,3,4
   const origPath = path.join(runDir, 'run-original.json');
   const origPathAlt = path.join(runDir, 'run-1.json');
   const origFile = fs.existsSync(origPath) ? origPath : (fs.existsSync(origPathAlt) ? origPathAlt : null);
@@ -62,7 +68,6 @@ function main() {
 
   const headers = ['POC', 'score_original', ...runFiles.map(r => `score_${r.name}`), 'notes'];
   const rows = [headers];
-  // Only flag "changed" if diff >= 0.001 (ignore very small differences)
   const MIN_DIFF = 0.001;
   const isChanged = (a, b) => typeof a === 'number' && typeof b === 'number' && Math.abs(a - b) >= MIN_DIFF;
 

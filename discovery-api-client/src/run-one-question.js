@@ -1,6 +1,11 @@
-// Run POC comparison + LLM for ONE question via API (no CSV input needed)
-// Usage: node src/run-one-question.js "Your question here"
-
+/**
+ * One question via API: POC scores + LLM answers — no chunk CSVs required.
+ *
+ * Usage: node src/run-one-question.js "Your question here"
+ * Output: reports/compare-1.5k-vs-3k/compare-pocs-*.csv + compare-llm-answers-*.csv
+ *
+ * See README.md → "run-one-question".
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

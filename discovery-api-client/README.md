@@ -1,84 +1,118 @@
 # Discovery API Client
 
-Calls the Discovery GraphQL API with questions and generates reports. Supports both `discovery` and `discoveryTest` queries for comparison.
+Node scripts that call the Concord **Discovery** GraphQL API (`discovery` = 3K chunker path, `discoveryTest` = 1.5K path). Used for batch runs, 1.5K vs 3K comparisons, and LLM answer exports.
 
-## Quick Start
+**Config:** `.env` — `GRAPHQL_ENDPOINT`, `AUTH_TOKEN` (optional).
 
-```bash
-cd discovery-api-client
-npm install
-```
+**Questions:** `fixtures/questions.json` (used by batch scripts).
 
-## Running Queries
+**Outputs:** `reports/` (JSON/CSV with timestamps).
 
-### Run discoveryTest query (default)
-```bash
-npm run discoveryTest
-# or
-npm start
-```
+**Renames (for clarity):** `compare.js` → `compare-discovery-vs-discoveryTest.js` · `quick-test.js` → `compare-llm-single-question.js` · `compare-pocs-and-llm.js` → `compare-chunk-csvs-and-llm.js` · `compare-one-question-pocs.js` → `analyze-multi-run-one-question.js`. Old `npm` names `quick-test`, `compare-pocs-and-llm`, `compare-one-question` still work as aliases.
 
-### Run discovery query
-```bash
-npm run discovery
-```
+---
 
-### Compare Results
-After running both queries, compare the latest reports:
-```bash
-npm run compare
-```
+## Script catalog (what to run when)
 
-### Run discovery query
-```bash
-npm run quick-test
-```
+### Core — batch API runs
 
-### Compare latest discoveryTest runs (documents, response time)
-```bash
-npm run compare-discoveryTest
-```
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm start` / `npm run discoveryTest` | `src/index.js` | Runs **every question** in `fixtures/questions.json` with **`discoveryTest`**, writes `discoveryTest-report-{timestamp}.json` + `.csv`. |
+| `npm run discovery` | `src/index.js` | Same as above but **`discovery`** (3K). |
 
-### Compare latest discoveryTest runs (documents, response time)
-```bash
-npm run compare-10-pocs
-```
+**When to use:** Refresh full POC lists / scores after pipeline changes. Incremental saves after each question.
 
-## How It Works
+---
 
-1. **Loads questions** from `fixtures/questions.json`
-2. **Calls API** for each question with:
-   - `question`: The question text (embedded in query)
-   - `restriction`: `NONE`
-   - `enableConversation`: `true`
-3. **Saves results** incrementally to `reports/` as JSON and CSV
+### Compare latest batch reports
 
-## Output
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare` | `src/compare-discovery-vs-discoveryTest.js` | Loads the **latest** `discovery-report-*.csv` and **latest** `discoveryTest-report-*.csv`, compares POC IDs per question, writes `comparison-report-*.csv`. |
 
-Reports are saved with timestamps:
-- `discovery-report-{timestamp}.json` - Full API responses
-- `discovery-report-{timestamp}.csv` - Summary
-- `discoveryTest-report-{timestamp}.json` - Full API responses
-- `discoveryTest-report-{timestamp}.csv` - Summary
-- `comparison-report-{timestamp}.csv` - Detailed comparison (after running compare)
+**When to use:** After you have run both `npm run discovery` and `npm run discoveryTest` (or two batches you want to diff).
 
-## Comparison Report
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare-discoveryTest` | `src/compare-discoveryTest-runs.js` | Compares the **two most recent** `discoveryTest-report-*.json` files (genres, timings, zero-result questions, POC counts). |
 
-The comparison script analyzes:
-- **Results matching**: Do both queries return the same result IDs?
-- **Chunks ordering**: Are chunks in the same order between queries?
-- **Null results**: Which questions return null in one but not the other?
-- **parentGenre analysis**: Why is parentGenre null? (should show "Read" and "Rheingold")
+**When to use:** Regression / “did this deploy change discoveryTest behaviour?”
 
-## Configuration
+---
 
-Edit `.env` to change:
-- `GRAPHQL_ENDPOINT` - API endpoint (default: `https://concord.sandsmedia.com/graphql`)
-- `AUTH_TOKEN` - Access token for authentication
+### Single question — LLM answers
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare-llm-single-question` | `src/compare-llm-single-question.js` | Default question in file, or: `node src/compare-llm-single-question.js "Your question"`. Calls **`discovery`** and **`discoveryTest`**, reads **stream URLs**, saves both LLM answers to `reports/compare-llm-single-question-answers-{timestamp}.csv`. |
+| `npm run quick-test` | *(alias)* | Same as `compare-llm-single-question`. |
+
+**When to use:** Quick side-by-side answer quality check without chunk CSVs.
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run run-one-question` | `src/run-one-question.js` | **CLI:** `node src/run-one-question.js "Your question"` — no CSV input. Fetches POC rows + scores for both APIs, writes POC comparison CSV + LLM answers under `reports/compare-1.5k-vs-3k/`. |
+
+**When to use:** Same idea as above but **POC-level scores** from the API (not chunk exports).
+
+---
+
+### 1.5K vs 3K — chunk CSVs + LLM
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare-chunk-csvs-and-llm` | `src/compare-chunk-csvs-and-llm.js` | **Args:** `1.5k.csv` `3k.csv` `[question]`. Parses **chunk** rows (`chunk_id`, `poc_id`, `score`), builds chunk alignment CSV, then fetches **LLM** answers for that question. |
+| `npm run compare-pocs-and-llm` | *(alias)* | Same script (old name). |
+
+**When to use:** You already exported chunk-level CSVs from the chunker for the same question; want chunk diff + answer diff in one go.
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare-two-csvs` | `src/compare-two-poc-csvs.js` | **Args:** two POC/score CSVs (1.5K vs 3K). Prints overlap, only-in-one, vector score ranges, score diffs; optional answer `.txt` files to cross-check **cited POCs** in answers. Writes a small CSV under `reports/`. |
+
+**When to use:** Two POC-level exports (not necessarily full chunk dumps); focus on set/score diff + optional citation check.
+
+---
+
+### Multi-run / non-determinism experiments
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run run-multi-api-test` | `src/run-multi-api-test.js` | Runs **`discoveryTest`** over the **10 fixed questions** multiple times, writes `reports/multi-run-{timestamp}/` with per-run JSON. Intended to compare vector scores across repeats. |
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run analyze-multi-run-one-question` | `src/analyze-multi-run-one-question.js` | Reads a **`multi-run-*`** folder, builds a CSV comparing POC scores across runs for **one hardcoded question** (edit `QUESTION` in file). |
+| `npm run compare-one-question` | *(alias)* | Same script (old name). |
+
+**When to use:** After `run-multi-api-test`; analysing stability of retrieval scores for a single question.
+
+---
+
+### One-off / historical (edit paths before use)
+
+| npm script | File | Purpose |
+|------------|------|---------|
+| `npm run compare-10-pocs` | `src/compare-10-questions-pocs.js` | Compares a **fixed old** `3k-discoveryTest-report-*.json` to the **latest** `discoveryTest-report-*.json` (excluding `3k-` prefix) for **10 hardcoded questions** — POC IDs and genres side by side. **Contains hardcoded report filename** — update or duplicate for new baselines. |
+
+**When to use:** Migration / embedding comparison snapshots, not routine QA.
+
+---
+
+## Outputs (typical filenames)
+
+- `reports/discovery-report-{timestamp}.json` / `.csv`
+- `reports/discoveryTest-report-{timestamp}.json` / `.csv`
+- `reports/comparison-report-{timestamp}.csv` (from `compare`)
+- `reports/compare-llm-single-question-answers-{timestamp}.csv` (from `compare-llm-single-question` / `quick-test`)
+- `reports/compare-1.5k-vs-3k/` — chunk + LLM comparisons from `compare-chunk-csvs-and-llm` / `run-one-question`
+- `reports/multi-run-{timestamp}/` — from `run-multi-api-test`
+
+---
 
 ## Notes
 
-- Reports save after each question (monitor progress)
-- 500ms delay between requests
-- Failed calls logged but don't stop the process
-- Comparison script finds the latest reports automatically
+- Delays between API calls vary by script (often 3–5s) to reduce rate limits.
+- `compare-chunk-csvs-and-llm`’s GraphQL query for LLM **does not request `score`** on results (chunks come from your CSVs).
+- For a **minimal** workflow: `npm run discoveryTest` → inspect CSV; optionally `npm run discovery` → `npm run compare`.

@@ -1,6 +1,10 @@
-// Compare two POC CSVs (1.5K vs 3K) for the same question + optional LLM answers
-// Usage: node src/compare-two-poc-csvs.js <file-1.5k.csv> <file-3k.csv> [answer-1.5k.txt] [answer-3k.txt]
-
+/**
+ * Compare two POC-level CSVs (1.5K vs 3K): overlap, score diffs, vector ranges; optional answer .txt for cited POCs.
+ *
+ * Usage: node src/compare-two-poc-csvs.js <1.5k.csv> <3k.csv> [answer-1.5k.txt] [answer-3k.txt]
+ *
+ * See README.md → "compare-two-csvs".
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

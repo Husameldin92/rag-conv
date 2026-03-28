@@ -1,6 +1,10 @@
-// Run discoveryTest API multiple times and compare vector results
-// Goal: verify we get subtly different vector results ~50% of the time
-
+/**
+ * Repeat discoveryTest over 10 fixed questions, save each full run under reports/multi-run-{timestamp}/.
+ *
+ * Used to measure score stability / non-determinism across API calls.
+ *
+ * See README.md → "run-multi-api-test".
+ */
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';

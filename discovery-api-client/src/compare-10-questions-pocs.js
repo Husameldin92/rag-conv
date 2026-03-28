@@ -1,6 +1,11 @@
-// this is for the comparison of the POC IDs for the 10 questions used in the LLM answer comparison
-// it will compare the POC IDs for the 10 questions and save the results to a CSV file
-// it will save the results to a CSV file with the question, old_POCs, new_POCs, old genre, new genre, notes
+/**
+ * Historical snapshot: fixed baseline 3k JSON vs latest discoveryTest JSON for 10 hardcoded questions.
+ *
+ * WARNING: OLD_3K_REPORT path is hardcoded — update for new baselines.
+ * Output: compare-10-questions-pocs-{timestamp}.csv
+ *
+ * See README.md → "One-off / historical".
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';

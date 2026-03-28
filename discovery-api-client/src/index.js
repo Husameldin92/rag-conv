@@ -1,6 +1,11 @@
-// this is the main script to call the discovery and discoveryTest API with questions
-// it will save the results to a JSON and CSV file
-
+/**
+ * Batch Discovery API runner — all questions from fixtures/questions.json.
+ *
+ * Invoked as: node src/index.js [discovery|discoveryTest] (default: discoveryTest).
+ * Writes timestamped JSON + CSV under reports/ after each question (incremental).
+ *
+ * See README.md → "Core — batch API runs".
+ */
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';

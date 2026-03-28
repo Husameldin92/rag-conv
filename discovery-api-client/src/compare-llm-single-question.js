@@ -1,8 +1,14 @@
-// this is for the LLM answer comparison
-// this script extract the answer from the stream URL and save it to a CSV file
-// the purpose is to compare discovery and discoveryTest answers for a single question
-
-
+/**
+ * Single-question LLM comparison: discovery (3K) vs discoveryTest (1.5K) stream answers.
+ *
+ * Edit DEFAULT_QUESTION in this file, or pass: node src/compare-llm-single-question.js "Question?"
+ * Fetches streamUrl for both queries, writes CSV with both answers. API-only (no chunk CSVs).
+ *
+ * Output: reports/compare-llm-single-question-answers-{timestamp}.csv
+ * Alias: npm run quick-test → same script (legacy name).
+ *
+ * See README.md → "compare-llm-single-question".
+ */
 import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
@@ -72,7 +78,6 @@ async function fetchStreamContent(streamUrl) {
       return { error: text };
     }
 
-    // Try JSON first (e.g. {"content":"..."} or {"text":"..."})
     try {
       const json = JSON.parse(text);
       if (json.error) return { error: json.error };
@@ -84,7 +89,6 @@ async function fetchStreamContent(streamUrl) {
       // Not JSON
     }
 
-    // SSE format: data: {...}\n\n
     const lines = text.split('\n');
     const chunks = [];
     for (const line of lines) {
@@ -114,9 +118,9 @@ function escapeCsv(value) {
   return '"' + s.replace(/"/g, '""') + '"';
 }
 
-async function runQuickTest() {
+async function main() {
   const question = process.argv[2] || DEFAULT_QUESTION;
-  console.log(`\n🧪 Quick test: 1 question, fetching answer text from stream URLs\n`);
+  console.log(`\n📋 Compare LLM (single question): discovery vs discoveryTest\n`);
   console.log(`   Question: "${question}"\n`);
 
   const reportsDir = path.join(__dirname, '../reports');
@@ -126,7 +130,6 @@ async function runQuickTest() {
   let discoveryAnswer = null;
   let discoveryTestAnswer = null;
 
-  // discovery
   console.log(`[discovery] Calling API...`);
   const { status: s1, ok: ok1, body: body1 } = await callAPI(question, 'discovery');
   if (ok1) {
@@ -146,7 +149,6 @@ async function runQuickTest() {
 
   await new Promise(r => setTimeout(r, DELAY_MS));
 
-  // discoveryTest
   console.log(`\n[discoveryTest] Calling API...`);
   const { status: s2, ok: ok2, body: body2 } = await callAPI(question, 'discoveryTest');
   if (ok2) {
@@ -164,8 +166,7 @@ async function runQuickTest() {
     console.log(`   ❌ HTTP ${s2}`);
   }
 
-  // CSV output
-  const csvPath = path.join(reportsDir, `quick-test-answers-${timestamp}.csv`);
+  const csvPath = path.join(reportsDir, `compare-llm-single-question-answers-${timestamp}.csv`);
   const d = typeof discoveryAnswer === 'string' ? discoveryAnswer : '';
   const t = typeof discoveryTestAnswer === 'string' ? discoveryTestAnswer : '';
   const csvRows = [
@@ -177,4 +178,4 @@ async function runQuickTest() {
   console.log(`\n✅ CSV saved: ${csvPath}\n`);
 }
 
-runQuickTest().catch(console.error);
+main().catch(console.error);

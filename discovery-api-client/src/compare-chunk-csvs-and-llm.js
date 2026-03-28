@@ -1,10 +1,14 @@
-// Compare POCs (1.5K vs 3K) + LLM answer report for one question
-// Usage: node src/compare-pocs-and-llm.js <1.5k.csv> <3k.csv> [question]
-//
-// Outputs:
-// 1. CSV: POC comparison (POC, score_1.5K, score_3K, note)
-// 2. CSV: LLM answers (Question, Discovery Answer, DiscoveryTest Answer) - same as quick-test
-
+/**
+ * Chunk CSV diff (1.5K vs 3K) + LLM answers for one question.
+ *
+ * Usage: node src/compare-chunk-csvs-and-llm.js <1.5k.csv> <3k.csv> [question]
+ * Input CSVs: rows with chunk_id, poc_id, score (chunker exports).
+ * Outputs under reports/compare-1.5k-vs-3k/: compare-chunks-*.csv + compare-llm-answers-*.csv
+ *
+ * Alias: npm run compare-pocs-and-llm → same script (legacy name).
+ *
+ * See README.md → "compare-chunk-csvs-and-llm".
+ */
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
@@ -21,7 +25,6 @@ const DEFAULT_QUESTION = 'How does Kubernetes autoscaling work?';
 const GRAPHQL_ENDPOINT = process.env.GRAPHQL_ENDPOINT || 'https://concord.sandsmedia.com/graphql';
 const DELAY_MS = 5000;
 
-// Parse CSV and return ordered chunks (one per row; compare by chunk_id)
 function parseChunkCsv(filePath) {
   const text = fs.readFileSync(filePath, 'utf-8');
   const rows = parse(text, { relax_column_count: true, skip_empty_lines: true });
@@ -115,7 +118,7 @@ async function main() {
   const question = process.argv[4] || DEFAULT_QUESTION;
 
   if (!file15k || !file3k) {
-    console.error('Usage: node compare-pocs-and-llm.js <1.5k.csv> <3k.csv> [question]');
+    console.error('Usage: node src/compare-chunk-csvs-and-llm.js <1.5k.csv> <3k.csv> [question]');
     process.exit(1);
   }
   if (!fs.existsSync(file15k) || !fs.existsSync(file3k)) {
@@ -128,7 +131,6 @@ async function main() {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 
-  // --- 1. Chunk comparison CSV (compare by chunk_id; include both chunk_id and poc_id) ---
   const chunks15k = parseChunkCsv(file15k);
   const chunks3k = parseChunkCsv(file3k);
   const chunkIds15k = new Set(chunks15k.map(c => c.chunkId));
@@ -164,7 +166,6 @@ async function main() {
   console.log(`   Chunks: 1.5K=${chunks15k.length}, 3K=${chunks3k.length}`);
   console.log(`   In 3K but missing in 1.5K: ${onlyIn3k}`);
 
-  // --- 2. LLM answer report (same as quick-test) ---
   console.log(`\n📡 Fetching LLM answers for: "${question}"`);
   let discoveryAnswer = null;
   let discoveryTestAnswer = null;

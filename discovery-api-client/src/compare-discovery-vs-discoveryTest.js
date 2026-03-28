@@ -1,7 +1,11 @@
-// this is for the comparison of the discovery and discoveryTest API results
-// it will compare the results of the discovery and discoveryTest API for each question
-// it will save the results to a CSV file
-// it take the latest discovery and discoveryTest reports and compare them
+/**
+ * Compare latest discovery vs discoveryTest CSV reports (auto-picks newest files in reports/).
+ *
+ * Output: comparison-report-{timestamp}.csv — POC alignment per question.
+ * Prereq: you have run both npm run discovery and npm run discoveryTest (or equivalent CSVs exist).
+ *
+ * See README.md → "Compare latest batch reports".
+ */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
