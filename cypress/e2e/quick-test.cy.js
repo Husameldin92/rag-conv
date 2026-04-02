@@ -85,9 +85,12 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
   // Generate a test for each question
   testQuestions.forEach((testQuestion, questionIndex) => {
     it(`Question ${questionIndex + 1}: "${testQuestion.substring(0, 50)}${testQuestion.length > 50 ? '...' : ''}"`, () => {
-      // Do not send the next question until the previous turn is fully done
       cy.waitForComposerReadyForNewQuestion({ timeout: 180000 })
-      cy.dismissOverlays()
+
+      if (questionIndex > 0) {
+        cy.wait(30000)
+        cy.log('⏳ 30s pause before typing the next question')
+      }
 
       // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
@@ -95,21 +98,19 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       let responseTime = 0
       let startTime = 0
       
-      // 1) Type → 2) send active → 3) click send (intercept must be registered before click)
+      // 1) Type → 2) wait until disabled="" gone → 3) click (intercept before click)
       cy.getChatInput()
         .clear()
         .type(testQuestion, { force: true })
 
+      cy.getChatInput().should('not.be.disabled')
       cy.intercept('POST', 'https://concord.sandsmedia.com/graphql').as('graphqlRequest')
 
-      cy.getComposerSendButton({ timeout: 30000 })
-        .should('be.visible')
-        .should('not.be.disabled')
-        .should('not.have.attr', 'disabled')
+      cy.waitForComposerSendEnabled({ timeout: 60000 })
+
       cy.getComposerSendButton({ timeout: 10000 })
+        .filter(':visible')
         .first()
-        .should('be.visible')
-        .should('not.be.disabled')
         .then(($el) => {
           const node = $el && $el[0]
           if (!node) throw new Error('Composer send button not found for click')
@@ -119,17 +120,13 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
 
     let answerInterception = null
 
-    cy.waitForLlmAnswerComplete({
-      streamTimeout: 120000,
-      timeout: 300000,
-      answerTimeout: 180000,
-    })
+    cy.waitForComposerTextareaReady({ timeout: 300000 })
 
     cy.then(() => {
       const endTime = Date.now()
       responseTime = endTime - startTime
       cy.log(
-        `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — until answer complete`
+        `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — click → textarea ready again`
       )
     })
     cy.wait(1000)

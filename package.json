@@ -7,7 +7,8 @@
     "cypress:run": "cypress run",
     "test": "cypress run",
     "test:quick": "cypress run --spec 'cypress/e2e/quick-test.cy.js'",
-    "test:block-c": "cypress run --spec 'cypress/e2e/block-c.cy.js'"
+    "test:production-rag": "cypress run --spec 'cypress/e2e/production-conversational-rag.cy.js'",
+    "test:staging-synthesis": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-synthesis-answer-check.cy.js'"
   },
   "keywords": [
     "cypress",

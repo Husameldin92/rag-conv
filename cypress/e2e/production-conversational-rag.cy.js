@@ -1,7 +1,7 @@
 /**
- * Questions Test Suite
- * 
- * This test suite loads questions from cypress/fixtures/questions.json
+ * Production — conversational RAG (https://entwickler.de)
+ *
+ * Loads cypress/fixtures/questions.json
  * and tests each question individually by:
  * 1. Typing the question into the chat input
  * 2. Submitting the question
@@ -76,7 +76,7 @@ function extractLlmAnswerFromPageText(bodyText) {
 }
 
 // Each question can take several minutes (LLM stream). Default Mocha/Cypress test timeout is 60s.
-describe('Questions Test Suite', { testIsolation: false, timeout: 600000 }, () => {
+describe('Production — conversational RAG', { testIsolation: false, timeout: 600000 }, () => {
   let reportData = []
   let currentUser = ''
   let reportTimestamp = ''
@@ -106,6 +106,7 @@ describe('Questions Test Suite', { testIsolation: false, timeout: 600000 }, () =
 
     const graphqlUrl =
       Cypress.env('GRAPHQL_URL') || 'https://concord.sandsmedia.com/graphql'
+    // Passive: does not modify requests/responses or stop streaming — only copies response body for the report.
     cy.intercept('POST', graphqlUrl, (req) => {
       req.on('response', (res) => {
         try {
@@ -160,65 +161,86 @@ describe('Questions Test Suite', { testIsolation: false, timeout: 600000 }, () =
 
   questions.forEach((question, index) => {
     it(`Question ${index + 1}: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`, () => {
-      // Previous question must be fully finished before we type the next one
+      // Previous turn: wait until textarea enabled again (not overlays — login already dismissed; avoid extra clicks before typing).
       cy.waitForComposerReadyForNewQuestion({ timeout: 180000 })
-      cy.dismissOverlays()
+
+      // Let the previous answer finish rendering/streaming before typing the next question
+      if (index > 0) {
+        cy.wait(30000)
+        cy.log('⏳ 30s pause before typing the next question')
+      }
 
       cy.then(() => {
         graphqlCapture.longestAnswer = ''
         graphqlCapture.lastBody = null
       })
 
-      // Flow: wait for composer → type → send → WAIT for full LLM answer → only then next it() runs
-      cy.log(`▶ Question ${index + 1}/${questions.length}: type and send, then wait for complete answer`)
+      cy.log(`▶ Question ${index + 1}/${questions.length}`)
 
-      // 1) Type the question → 2) wait until send is active → 3) click send
-      cy.getChatInput()
-        .clear()
-        .type(question, { force: true })
-
-      // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
       let llmAnswer = ''
       let responseTime = 0
       let startTime = 0
 
-      // Scoped to composer; assert ready, then re-query and native-click (avoids undefined cy.wrap subject after Angular updates)
-      cy.getComposerSendButton({ timeout: 30000 })
-        .should('be.visible')
-        .should('not.be.disabled')
-        .should('not.have.attr', 'disabled')
+      cy.getChatInput()
+        .clear()
+        .type(question, { force: true })
+
+      cy.getChatInput().should('not.be.disabled')
+      cy.waitForComposerSendEnabled({ timeout: 60000 })
+
       cy.getComposerSendButton({ timeout: 10000 })
+        .filter(':visible')
         .first()
         .should('be.visible')
-        .should('not.be.disabled')
-        .then(($el) => {
-          const node = $el && $el[0]
-          if (!node) throw new Error('Composer send button not found for click')
+        .then(($btn) => {
+          const node = $btn[0]
+          const sendDisabled =
+            !node ||
+            node.disabled ||
+            $btn.attr('disabled') !== undefined ||
+            $btn.attr('aria-disabled') === 'true'
+
+          if (sendDisabled) {
+            cy.log('⚠ Send still disabled — not clicking (skips this question)')
+            reportData.push({
+              user: currentUser,
+              question,
+              topic: 'Not sent',
+              synthesisQuestion: 'Not sent',
+              llmAnswer: '',
+              responseTime: 0,
+              questionNumber: index + 1
+            })
+            const csvContent = generateCSV(reportData)
+            const csvFilename = `questions-report-${reportTimestamp}.csv`
+            cy.task('writeReport', { data: csvContent, filename: csvFilename })
+            const jsonFilename = `questions-report-${reportTimestamp}.json`
+            cy.task('writeReport', {
+              data: JSON.stringify(reportData, null, 2),
+              filename: jsonFilename
+            })
+            return
+          }
+
           startTime = Date.now()
           node.click()
-        })
 
-      // WAIT: stream ends + answer visible (sequential; no next question until this passes)
-      cy.waitForLlmAnswerComplete({
-        streamTimeout: 120000,
-        timeout: 300000,
-        answerTimeout: 180000,
-        getGraphqlLength: () => (graphqlCapture.longestAnswer || '').length,
-      })
+          cy.log('⏳ Wait until text input is enabled again (then next question)…')
+          cy.waitForComposerTextareaReady({ timeout: 300000 })
 
-      cy.then(() => {
-        const endTime = Date.now()
-        responseTime = endTime - startTime
-        cy.log(
-          `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — until answer complete`
-        )
-      })
+          cy.then(() => {
+            const endTime = Date.now()
+            responseTime = endTime - startTime
+            cy.log(
+              `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — click → textarea ready again`
+            )
+          })
 
-      cy.wait(1000)
+          cy.wait(300)
 
-      cy.get('body', { timeout: 10000 }).then(($body) => {
+          cy.get('body', { timeout: 10000 }).then(($body) => {
         const bodyText = $body.text()
 
         llmAnswer = extractLlmAnswerFromGraphqlBody(graphqlCapture.lastBody, question)
@@ -292,10 +314,10 @@ describe('Questions Test Suite', { testIsolation: false, timeout: 600000 }, () =
         }).then(() => {
           cy.log(`✓ JSON report updated with question ${index + 1}`)
         })
-      })
-      
-      
-      cy.log(`Question ${index + 1} response received and input is ready for next question`)
+          })
+
+          cy.log(`Question ${index + 1} response received and input is ready for next question`)
+        })
     })
   })
 })

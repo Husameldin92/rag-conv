@@ -13,11 +13,12 @@ cypress/
 │   ├── commands.js             # Custom commands
 │   └── login.js                # Reusable login logic
 ├── e2e/
-│   ├── block-c.cy.js           # Main test file - runs all questions from questions.json
-│   └── quick-test.cy.js        # Quick test with 3 questions for verification
+│   ├── production-conversational-rag.cy.js  # Production entwickler.de — full fixture run + reports
+│   ├── staging-synthesis-answer-check.cy.js # Questions Test Suite against staging.entwickler.de (see npm script)
+│   └── quick-test.cy.js                     # Quick test with 3 questions for verification
 └── reports/
-    ├── questions-report-{timestamp}.csv    # CSV: User, Question, Topic, Synthesis, LLM Answer, Response Time (ms)
-    ├── questions-report-{timestamp}.json   # JSON report with same data
+    ├── questions-report-{timestamp}.csv    # Production: includes LLM Answer; staging spec omits it (lighter CSV/JSON)
+    ├── questions-report-{timestamp}.json   # Same row shape as the matching CSV for that run
     ├── quick-test-report-{timestamp}.csv  # Quick test CSV report
     └── quick-test-report-{timestamp}.json  # Quick test JSON report
 ```
@@ -38,13 +39,14 @@ cypress/
 
 3. **Base URL:**
    - Default in `cypress.config.js` is `https://entwickler.de`. Override when needed:
-   - `CYPRESS_BASE_URL=https://entwickler.de npx cypress run --spec "cypress/e2e/block-c.cy.js"`
-   - HTTP basic auth in front of the site is **off** by default. To enable it, set `"USE_BASIC_AUTH": "true"` and add `AUTH_USERNAME` / `AUTH_PASSWORD` in `cypress.env.json`.
+   - Production: `npm run test:production-rag` or `npx cypress run --spec "cypress/e2e/production-conversational-rag.cy.js"`
+   - Staging: `npm run test:staging-synthesis` (sets `CYPRESS_BASE_URL` / `LOGIN_URL` / `APP_ORIGIN` to `https://staging.entwickler.de`)
+   - **Staging** (`npm run test:staging-synthesis`): base URL is `staging.entwickler.de`. **HTTP Basic Auth** is used on every `cy.visit` (same as `cy.visit(url, { auth: { username, password } })` on `/login/`). Set `STAGING_AUTH_USERNAME` / `STAGING_AUTH_PASSWORD` in `cypress.env.json`. App form login: `STAGING_USER_*` (or `USER_*`). Production uses `USER_*` only; optional `USE_BASIC_AUTH` + `AUTH_*` for production basic auth. See `cypress.env.json.example`.
 
 4. **Update selectors in test files (if needed):**
    - Review `cypress/support/login.js` and update selectors for auth and user login forms if they change
    - The chat input is targeted via `cy.getChatInput()` → `.message-input` (see `cypress/support/commands.js`)
-   - After send: **`cy.waitForSendReadyAfterStream()`** — waits for send **disabled** (stream running), then **enabled again** (turn complete). Response time ends when send is enabled again, not when the textarea alone becomes active.
+   - After send: **`cy.waitForComposerTextareaReady()`** — composer textarea enabled again (see `cypress/support/commands.js`).
    - The send button selector is: `button.send-button`
 
 ## Running Tests
@@ -59,10 +61,16 @@ npm run cypress:open
 npm run cypress:run
 ```
 
-### Run Block-C Test Suite (100 questions)
+### Run production conversational RAG (fixtures/questions.json)
 ```bash
-npm run test:block-c
+npm run test:production-rag
 ```
+
+### Run staging synthesis & answer check (same spec; staging.entwickler.de)
+```bash
+npm run test:staging-synthesis
+```
+Requires `STAGING_AUTH_*` (HTTP Basic Auth) and `STAGING_USER_*` or `USER_*` for the app login form (see `cypress.env.json.example`).
 
 ### Run Quick Test (3 questions for verification)
 ```bash
@@ -107,14 +115,9 @@ Both login functions are reusable across different test files via custom Cypress
 
 The test suite generates timestamped report files for each test run:
 
-1. **`cypress/reports/questions-report-{timestamp}.csv`** - CSV format with columns:
-   - User
-   - Question
-   - Topic
-   - Synthesis Question
-   - Response Time (ms)
+1. **`cypress/reports/questions-report-{timestamp}.csv`** / **`.json`** — from **`production-conversational-rag`**: User, Question, Topic, Synthesis Question, **LLM Answer**, Response Time (ms).
 
-2. **`cypress/reports/questions-report-{timestamp}.json`** - JSON format with same data
+2. Same filename pattern from **`staging-synthesis-answer-check`**: User, Question, Topic, Synthesis Question, Response Time (ms) — **no `llmAnswer` field** (smaller files; LLM text stays on production runs only).
 
 3. **`cypress/reports/quick-test-report-{timestamp}.csv`** - Quick test CSV report
 4. **`cypress/reports/quick-test-report-{timestamp}.json`** - Quick test JSON report
@@ -134,7 +137,7 @@ The tests extract Topic and Synthesis Question from the API response or page con
 ## Notes
 
 - `cypress.env.json` is gitignored - never commit credentials
-- `cypress/reports/` and `cypress/videos/` are gitignored
+- `cypress/reports/` and `cypress/videos/` are gitignored — reports exist **locally** after a run; they are not committed unless you change `.gitignore` or upload CI artifacts. Staging writes **`questions-report-{timestamp}.csv`** / **`.json`** (updated after each question).
 - All questions run in the same browser session (no page reloads between questions)
 - Video recording is enabled by default - check `cypress/videos/` for test recordings
 - If extraction fails, values will be "Not found" in the reports

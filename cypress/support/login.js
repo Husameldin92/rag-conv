@@ -1,14 +1,21 @@
 /**
  * Login helper functions for Cypress tests
- * Handles optional HTTP basic auth and user login (app login)
- * 
+ * 1) Optional HTTP Basic Auth on cy.visit (browser auth dialog)
+ * 2) App login (#username / #password)
+ *
  * Usage:
  *   cy.authLogin()
  *   cy.userLogin()
  *
  * Env:
- *   APP_ORIGIN or cypress.config baseUrl — default https://entwickler.de
- *   USE_BASIC_AUTH — set "true" only if the site is behind HTTP basic auth (then set AUTH_USERNAME / AUTH_PASSWORD)
+ *   APP_ORIGIN / baseUrl — production or staging (e.g. https://staging.entwickler.de)
+ *   Production app user: USER_USERNAME, USER_PASSWORD
+ *   Staging app user (when origin is staging): STAGING_USER_USERNAME, STAGING_USER_PASSWORD (falls back to USER_* if unset)
+ *   Basic auth (production): USE_BASIC_AUTH + AUTH_USERNAME + AUTH_PASSWORD
+ *   Staging (staging.entwickler.de only — use test:staging-synthesis):
+ *     Every cy.visit uses HTTP Basic Auth (same as cy.visit(url, { auth: { username, password } }) on /login/).
+ *     Set STAGING_AUTH_USERNAME + STAGING_AUTH_PASSWORD in cypress.env.json (not used on production).
+ *     App form login: STAGING_USER_* or USER_*.
  */
 
 // Ignore uncaught exceptions from the website
@@ -24,9 +31,72 @@ function getAppOrigin() {
   return String(raw).replace(/\/$/, '')
 }
 
+function isStagingOrigin() {
+  return getAppOrigin().includes('staging.entwickler')
+}
+
+/** Login page URL — on staging, never reuse production LOGIN_URL from env by mistake. */
+function getLoginUrl() {
+  const origin = getAppOrigin()
+  if (isStagingOrigin()) {
+    const explicitStaging = Cypress.env('STAGING_LOGIN_URL')
+    if (explicitStaging) return String(explicitStaging).trim()
+    const loginUrl = Cypress.env('LOGIN_URL')
+    if (loginUrl && String(loginUrl).includes('staging.entwickler')) {
+      return String(loginUrl).trim()
+    }
+    return `${origin}/login/`
+  }
+  return String(Cypress.env('LOGIN_URL') || `${origin}/login/`).trim()
+}
+
 function shouldUseBasicAuth() {
+  if (isStagingOrigin()) {
+    // Staging always uses HTTP Basic Auth on cy.visit (same as the old visitWithAuth + /login/ flow).
+    return true
+  }
   const use = Cypress.env('USE_BASIC_AUTH')
   return use === true || use === 'true'
+}
+
+function getBasicAuthCredentials() {
+  if (isStagingOrigin()) {
+    const su = Cypress.env('STAGING_AUTH_USERNAME')
+    const sp = Cypress.env('STAGING_AUTH_PASSWORD')
+    if (su && sp) {
+      return { username: su, password: sp }
+    }
+    throw new Error(
+      'Staging requires HTTP Basic Auth: set STAGING_AUTH_USERNAME and STAGING_AUTH_PASSWORD in cypress.env.json (project root).'
+    )
+  }
+  const u = Cypress.env('AUTH_USERNAME')
+  const p = Cypress.env('AUTH_PASSWORD')
+  if (u && p) {
+    return { username: u, password: p }
+  }
+  throw new Error(
+    'USE_BASIC_AUTH is enabled: set AUTH_USERNAME and AUTH_PASSWORD in cypress.env.json.'
+  )
+}
+
+/** App form credentials (#username / #password) — staging-specific when set */
+function getAppUserCredentials() {
+  if (isStagingOrigin()) {
+    const u = Cypress.env('STAGING_USER_USERNAME')
+    const p = Cypress.env('STAGING_USER_PASSWORD')
+    if (u && p) {
+      return { username: u, password: p }
+    }
+  }
+  const u = Cypress.env('USER_USERNAME')
+  const p = Cypress.env('USER_PASSWORD')
+  if (!u || !p) {
+    throw new Error(
+      'Set USER_USERNAME and USER_PASSWORD in cypress.env.json (and STAGING_USER_USERNAME / STAGING_USER_PASSWORD when using staging.entwickler.de)'
+    )
+  }
+  return { username: u, password: p }
 }
 
 /**
@@ -49,14 +119,7 @@ Cypress.Commands.add('visitWithAuth', (url) => {
   }
 
   if (shouldUseBasicAuth()) {
-    const authUsername = Cypress.env('AUTH_USERNAME')
-    const authPassword = Cypress.env('AUTH_PASSWORD')
-
-    if (!authUsername || !authPassword) {
-      throw new Error(
-        'USE_BASIC_AUTH is enabled but AUTH_USERNAME and AUTH_PASSWORD are missing in cypress.env.json'
-      )
-    }
+    const { username: authUsername, password: authPassword } = getBasicAuthCredentials()
 
     return cy.visit(target, {
       ...visitOpts,
@@ -74,8 +137,11 @@ Cypress.Commands.add('visitWithAuth', (url) => {
  * Perform auth login: visit login page (with optional HTTP Basic Auth)
  */
 Cypress.Commands.add('authLogin', () => {
-  const origin = getAppOrigin()
-  const loginUrl = Cypress.env('LOGIN_URL') || `${origin}/login/`
+  const loginUrl = getLoginUrl()
+
+  if (isStagingOrigin()) {
+    cy.log(`Staging: visit login with HTTP Basic Auth → ${loginUrl}`)
+  }
 
   cy.visitWithAuth(loginUrl)
   cy.wait(3000)
@@ -87,11 +153,10 @@ Cypress.Commands.add('authLogin', () => {
  * Perform user login (app login) - the actual app login form
  */
 Cypress.Commands.add('userLogin', () => {
-  const userUsername = Cypress.env('USER_USERNAME')
-  const userPassword = Cypress.env('USER_PASSWORD')
+  const { username: userUsername, password: userPassword } = getAppUserCredentials()
 
-  if (!userUsername || !userPassword) {
-    throw new Error('USER_USERNAME and USER_PASSWORD must be set in cypress.env.json')
+  if (isStagingOrigin()) {
+    cy.log('Using staging app login credentials (STAGING_USER_* or fallback USER_*)')
   }
 
   // Check if already logged in (on intelligence page)
