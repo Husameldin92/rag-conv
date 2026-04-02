@@ -1,10 +1,14 @@
 /**
  * Login helper functions for Cypress tests
- * Handles both auth login (staging auth wall) and user login (app login)
+ * Handles optional HTTP basic auth and user login (app login)
  * 
  * Usage:
  *   cy.authLogin()
  *   cy.userLogin()
+ *
+ * Env:
+ *   APP_ORIGIN or cypress.config baseUrl — default https://entwickler.de
+ *   USE_BASIC_AUTH — set "true" only if the site is behind HTTP basic auth (then set AUTH_USERNAME / AUTH_PASSWORD)
  */
 
 // Ignore uncaught exceptions from the website
@@ -12,41 +16,71 @@ Cypress.on('uncaught:exception', (err, runnable) => {
   return false;
 });
 
+function getAppOrigin() {
+  const fromEnv = Cypress.env('APP_ORIGIN')
+  const fromConfig = Cypress.config('baseUrl')
+  const fallback = 'https://entwickler.de'
+  const raw = fromEnv || fromConfig || fallback
+  return String(raw).replace(/\/$/, '')
+}
+
+function shouldUseBasicAuth() {
+  const use = Cypress.env('USE_BASIC_AUTH')
+  return use === true || use === 'true'
+}
+
 /**
- * Visit a URL with HTTP Basic Auth (for staging auth wall)
+ * Visit a URL with optional HTTP Basic Auth.
+ * Custom commands must return the cy chain so Cypress can chain / await correctly.
  */
 Cypress.Commands.add('visitWithAuth', (url) => {
-  const authUsername = Cypress.env('AUTH_USERNAME')
-  const authPassword = Cypress.env('AUTH_PASSWORD')
-
-  if (!authUsername || !authPassword) {
-    throw new Error('AUTH_USERNAME and AUTH_PASSWORD must be set in cypress.env.json')
+  const target = typeof url === 'string' ? url.trim() : ''
+  if (!target) {
+    throw new Error(
+      'visitWithAuth: url is missing or invalid. Set LOGIN_URL and APP_ORIGIN in cypress.env.json (project root).'
+    )
   }
 
-  cy.visit(url, {
-    auth: {
-      username: authUsername,
-      password: authPassword
+  const visitOpts = { timeout: 90000 }
+  // If the server returns a non-2xx status you still need to load (e.g. edge CDN), set in cypress.env.json:
+  // "VISIT_IGNORE_STATUS_CODE": "true"
+  if (Cypress.env('VISIT_IGNORE_STATUS_CODE') === true || Cypress.env('VISIT_IGNORE_STATUS_CODE') === 'true') {
+    visitOpts.failOnStatusCode = false
+  }
+
+  if (shouldUseBasicAuth()) {
+    const authUsername = Cypress.env('AUTH_USERNAME')
+    const authPassword = Cypress.env('AUTH_PASSWORD')
+
+    if (!authUsername || !authPassword) {
+      throw new Error(
+        'USE_BASIC_AUTH is enabled but AUTH_USERNAME and AUTH_PASSWORD are missing in cypress.env.json'
+      )
     }
-  })
+
+    return cy.visit(target, {
+      ...visitOpts,
+      auth: {
+        username: authUsername,
+        password: authPassword
+      }
+    })
+  }
+
+  return cy.visit(target, visitOpts)
 })
 
 /**
- * Perform auth login (staging auth wall) using HTTP Basic Auth
+ * Perform auth login: visit login page (with optional HTTP Basic Auth)
  */
 Cypress.Commands.add('authLogin', () => {
-  const loginUrl = Cypress.env('LOGIN_URL') || 'https://staging.entwickler.de/login/'
-  
-  // Visit login page with basic auth
+  const origin = getAppOrigin()
+  const loginUrl = Cypress.env('LOGIN_URL') || `${origin}/login/`
+
   cy.visitWithAuth(loginUrl)
   cy.wait(3000)
-  
-  // Handle cookie consent
-  cy.get('body').then(($body) => {
-    if ($body.find(':contains("Alle akzeptieren")').length > 0) {
-      cy.contains('Alle akzeptieren', { timeout: 10000 }).click()
-    }
-  })
+
+  cy.dismissOverlays()
 })
 
 /**
@@ -75,7 +109,7 @@ Cypress.Commands.add('userLogin', () => {
       
       if (!hasLoginForm && !currentUrl.includes('/login')) {
         cy.log('Already logged in, navigating to intelligence page')
-        cy.visitWithAuth('https://staging.entwickler.de/reader/intelligence')
+        cy.visitWithAuth(`${getAppOrigin()}/reader/intelligence`)
         cy.url({ timeout: 15000 }).should('include', '/reader/intelligence')
         return
       }
@@ -87,7 +121,7 @@ Cypress.Commands.add('userLogin', () => {
       cy.get('#password').type(userPassword)
       cy.get(':nth-child(5) > .woocommerce-Button').click()
 
-      // Handle case where staging might request password again
+      // Handle case where login might request password again
       cy.get('body').then(($body) => {
         if ($body.find('#password:visible').length > 0) {
           cy.get('#password').type(userPassword)
@@ -103,7 +137,7 @@ Cypress.Commands.add('userLogin', () => {
   // Navigate to the intelligence page after login (or if already there, just verify)
   cy.url().then((currentUrl) => {
     if (!currentUrl.includes('/reader/intelligence')) {
-      cy.visitWithAuth('https://staging.entwickler.de/reader/intelligence')
+      cy.visitWithAuth(`${getAppOrigin()}/reader/intelligence`)
     }
   })
   
@@ -114,7 +148,9 @@ Cypress.Commands.add('userLogin', () => {
   cy.get('readerapp-ai-search-composer', { timeout: 15000 })
     .should('exist')
     .should('be.visible')
-  
+
+  cy.dismissOverlays()
+
   // Optional: Wait for a specific element that indicates successful login
   // cy.get('[data-testid="user-menu"], .user-profile, .dashboard').should('be.visible')
 })

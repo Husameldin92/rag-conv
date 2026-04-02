@@ -40,7 +40,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
       .should('be.visible')
     
     // Wait for the textarea to be ready
-    cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 15000 })
+    cy.getChatInput()
       .should('exist')
       .should('be.visible')
     
@@ -85,66 +85,54 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
   // Generate a test for each question
   testQuestions.forEach((testQuestion, questionIndex) => {
     it(`Question ${questionIndex + 1}: "${testQuestion.substring(0, 50)}${testQuestion.length > 50 ? '...' : ''}"`, () => {
+      // Do not send the next question until the previous turn is fully done
+      cy.waitForComposerReadyForNewQuestion({ timeout: 180000 })
+      cy.dismissOverlays()
+
       // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
       let responseTime = 0
       let startTime = 0
       
-      // Wait until the chat input is unlocked/ready
-      cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 30000 })
-        .should('exist')
+      // 1) Type → 2) send active → 3) click send (intercept must be registered before click)
+      cy.getChatInput()
+        .clear()
+        .type(testQuestion, { force: true })
+
+      cy.intercept('POST', 'https://concord.sandsmedia.com/graphql').as('graphqlRequest')
+
+      cy.getComposerSendButton({ timeout: 30000 })
         .should('be.visible')
         .should('not.be.disabled')
         .should('not.have.attr', 'disabled')
-      
-      // Clear and type the question
-      cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]')
-        .clear()
-        .type(testQuestion, { force: true })
-    
-    // Wait for the send button to be enabled
-    cy.get('button.send-button', { timeout: 10000 })
-      .should('be.visible')
-      .should('not.be.disabled')
-      .should('not.have.attr', 'disabled')
-    
-    // Set up interception BEFORE clicking
-    cy.intercept('POST', 'https://concord.sandsmedia.com/graphql').as('graphqlRequest')
-    
-    // Record start time just before clicking send (response time measurement starts here)
-    cy.then(() => {
-      startTime = Date.now()
-      cy.log(`⏱️  Response time measurement started at: ${startTime}`)
-    })
-    
-    // Click the send button
-    cy.get('button.send-button')
-      .click()
-    
-    // Wait for the send button to be disabled (indicating request is being processed)
-    cy.get('button.send-button', { timeout: 5000 })
-      .should('have.attr', 'disabled')
-    
-    // Wait for requests and find the one with userRags
+      cy.getComposerSendButton({ timeout: 10000 })
+        .first()
+        .should('be.visible')
+        .should('not.be.disabled')
+        .then(($el) => {
+          const node = $el && $el[0]
+          if (!node) throw new Error('Composer send button not found for click')
+          startTime = Date.now()
+          node.click()
+        })
+
     let answerInterception = null
-    
-    // Wait for answer to appear on page FIRST (this is the most reliable)
-    // The textarea becomes enabled again when answer is ready
-    cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 120000 })
-      .should('exist')
-      .should('be.visible')
-      .should('not.be.disabled')
-      .should('not.have.attr', 'disabled')
-      .then(() => {
-        // Calculate response time when textarea becomes enabled (response is ready)
-        const endTime = Date.now()
-        responseTime = endTime - startTime
-        cy.log(`⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} seconds)`)
-      })
-    
-    // Wait a bit more for answer to fully render
-    cy.wait(5000)
+
+    cy.waitForLlmAnswerComplete({
+      streamTimeout: 120000,
+      timeout: 300000,
+      answerTimeout: 180000,
+    })
+
+    cy.then(() => {
+      const endTime = Date.now()
+      responseTime = endTime - startTime
+      cy.log(
+        `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — until answer complete`
+      )
+    })
+    cy.wait(1000)
     
     // Note: We set up interception earlier, but requests may have already completed
     // We'll extract from the page content instead, which is more reliable
@@ -571,7 +559,7 @@ describe('Quick Test - Three Questions', { testIsolation: false }, () => {
     })
     
     // Wait for the response to complete - wait for textarea to be ready again
-    cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 60000 })
+    cy.getChatInput({ timeout: 60000 })
       .should('exist')
       .should('be.visible')
       .should('not.be.disabled')

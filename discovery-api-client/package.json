@@ -19,7 +19,9 @@
     "compare-two-csvs": "node src/compare-two-poc-csvs.js",
     "compare-chunk-csvs-and-llm": "node src/compare-chunk-csvs-and-llm.js",
     "compare-pocs-and-llm": "node src/compare-chunk-csvs-and-llm.js",
-    "run-one-question": "node src/run-one-question.js"
+    "run-one-question": "node src/run-one-question.js",
+    "batch-discovery-llm": "node src/batch-discovery-llm-answers.js",
+    "compose-multilang": "node scripts/compose-multilang.mjs"
   },
   "keywords": [
     "graphql",

@@ -1,6 +1,6 @@
 # Cypress Test Suite for RAG-CON
 
-This repository contains Cypress end-to-end tests for the RAG-CON application. The tests automate question submission to the Entwickler Intelligence chat and extract Topic and Synthesis Question from each response.
+This repository contains Cypress end-to-end tests for the RAG-CON application. The tests automate question submission to the Entwickler Intelligence chat and extract Topic, Synthesis Question, and the full **LLM answer** (preferably from the GraphQL `userRags` response) plus response time.
 
 ## Structure
 
@@ -16,7 +16,7 @@ cypress/
 │   ├── block-c.cy.js           # Main test file - runs all questions from questions.json
 │   └── quick-test.cy.js        # Quick test with 3 questions for verification
 └── reports/
-    ├── questions-report-{timestamp}.csv    # CSV report with User, Question, Topic, Synthesis Question, Response Time
+    ├── questions-report-{timestamp}.csv    # CSV: User, Question, Topic, Synthesis, LLM Answer, Response Time (ms)
     ├── questions-report-{timestamp}.json   # JSON report with same data
     ├── quick-test-report-{timestamp}.csv  # Quick test CSV report
     └── quick-test-report-{timestamp}.json  # Quick test JSON report
@@ -34,23 +34,17 @@ cypress/
    cp cypress.env.json.example cypress.env.json
    ```
    
-   Then edit `cypress.env.json` with your actual credentials:
-   ```json
-   {
-     "AUTH_USERNAME": "your-staging-auth-username",
-     "AUTH_PASSWORD": "your-staging-auth-password",
-     "AUTH_URL": "https://your-staging-auth-url.com",
-     "USER_USERNAME": "your-app-username",
-     "USER_PASSWORD": "your-app-password"
-   }
-   ```
+   Then edit `cypress.env.json` with your actual credentials (copy from `cypress.env.json.example`). Default app host is `https://entwickler.de`.
 
-3. **Update Cypress configuration:**
-   Edit `cypress.config.js` and update the `baseUrl` with staging URL.
+3. **Base URL:**
+   - Default in `cypress.config.js` is `https://entwickler.de`. Override when needed:
+   - `CYPRESS_BASE_URL=https://entwickler.de npx cypress run --spec "cypress/e2e/block-c.cy.js"`
+   - HTTP basic auth in front of the site is **off** by default. To enable it, set `"USE_BASIC_AUTH": "true"` and add `AUTH_USERNAME` / `AUTH_PASSWORD` in `cypress.env.json`.
 
 4. **Update selectors in test files (if needed):**
    - Review `cypress/support/login.js` and update selectors for auth and user login forms if they change
-   - The chat input selector is: `textarea[placeholder="Frag die Entwickler Intelligence"]`
+   - The chat input is targeted via `cy.getChatInput()` → `.message-input` (see `cypress/support/commands.js`)
+   - After send: **`cy.waitForSendReadyAfterStream()`** — waits for send **disabled** (stream running), then **enabled again** (turn complete). Response time ends when send is enabled again, not when the textarea alone becomes active.
    - The send button selector is: `button.send-button`
 
 ## Running Tests
@@ -90,7 +84,7 @@ To update questions, simply edit `cypress/fixtures/questions.json`. This is the 
 
 The test suite uses a two-step login process:
 
-1. **Auth Login** (`cy.authLogin()`): Handles the staging auth wall with basic credentials
+1. **Auth Login** (`cy.authLogin()`): Visits login page (HTTP basic auth only if `USE_BASIC_AUTH` is `"true"`)
 2. **User Login** (`cy.userLogin()`): Handles the actual app login with user credentials
 
 Both login functions are reusable across different test files via custom Cypress commands.

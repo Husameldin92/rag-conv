@@ -1,0 +1,103 @@
+Wie funktioniert Autoscaling in Kubernetes?
+Wer bist du auf dieser Plattform und wer darf dich nutzen?
+Erkläre die wichtigsten Vorteile von Spring Boot Actuator.
+Wann findet das nächste Delphi Camp statt?
+Gib mir die Schritte aus euren Inhalten, um Micrometer-Tracing in Spring Boot zu aktivieren.
+Was gibt’s Neues?
+Zeig das OpenTelemetry-Export-Beispiel aus den Dokumenten.
+Wie konfiguriere ich Metriken in Spring Boot 3?
+Leitfaden zu Content-Types
+Gibt es nächsten Monat eine JAX?
+Kann ein Nutzer im Basic-Tarif Aufzeichnungen ansehen?
+Gib mir die Schritte aus dem Artikel, den du gerade zu Observability abgerufen hast.
+Wie aktiviere ich Feature X in der neuesten Angular-Version, wenn es nicht in eurer Doku steht?
+Kannst du mich mit einem Coursera-Kurs zu Kafka verlinken?
+Was hat sich in Angular 18 bei Signals geändert?
+Wie funktioniert useMemo in React?
+Ich nutze Angular 16 – kann ich das von dir beschriebene Routing-Feature verwenden?
+Wie weit ist Berlin von Hamburg entfernt?
+Zeig mir Veranstaltungen zu Kubernetes.
+Verlinke mich zu einem Docker-Kurs auf Coursera.
+Was sagt Medium zu async/await?
+Gib mir einen Artikel über TypeScript-Typen.
+Ich bin Backend-Entwickler. Zeig mir passende Tutorials.
+Wie implementiere ich GraphQL-Caching?
+Wann findet die nächste APICon London statt?
+Wann findet die nächste APICon New York statt?
+Wann findet die nächste BASTA! Herbst statt?
+Wann findet die nächste BASTA! Spring statt?
+Wann findet das nächste Delphi Code Camp Düsseldorf statt?
+Wann ist das nächste DevOps-Training Docker?
+Wann ist das nächste DevOps-Training Kubernetes?
+Erzähl mir über React useEffect, nur aus Tutorials.
+Wie aktiviere ich asynchrone Verarbeitung in Spring Boot?
+Wie schreibe ich einen Unit-Test für einen Spring-Boot-REST-Controller?
+Was ist eine Standalone-Komponente in Angular und wie erstelle ich eine?
+Wie implementiere ich Route Guards in Angular?
+Wie funktioniert Garbage Collection in der JVM?
+Was ist der Unterschied zwischen TCP und UDP?
+Wie beschleunigt ein relationaler Datenbankindex Abfragen?
+Was ist Eventual Consistency in verteilten Systemen?
+Wie funktioniert der OAuth2-Authorization-Code-Flow?
+Was besagt das CAP-Theorem und warum ist es wichtig?
+Wie richte ich eine CI/CD-Pipeline mit GitHub Actions ein?
+Was ist der Unterschied zwischen REST und GraphQL?
+Worin unterscheidet sich eine WebSocket-Verbindung von HTTP?
+Was ist Database Sharding und wann sollte ich es einsetzen?
+Wie funktioniert HTTPS im Detail?
+Was ist der Unterschied zwischen Monorepo- und Polyrepo-Strategien?
+Wie implementiere ich Rate Limiting in einer API?
+Was ist ein Deadlock im Multithreading und wie vermeide ich ihn?
+Wie steuert Redis die Cache-Eviction?
+Was ist der Unterschied zwischen horizontalem und vertikalem Skalieren?
+Worin unterscheidet sich eine Message Queue wie Kafka von einer klassischen Datenbank?
+Was ist Infrastructure as Code und wie funktioniert Terraform?
+Wie verbessert ein CDN die Web-Performance?
+Was ist der Unterschied zwischen symmetrischer und asymmetrischer Verschlüsselung?
+Wie schreibe ich eine effektive Strategie für Datenbankmigrationen?
+Was ist Blue-Green-Deployment und wie reduziert es Ausfallzeiten?
+Wie entscheidet ein Load Balancer, welchen Server er anfragt?
+Was ist CORS und warum erzwingen Browser es?
+Wie funktioniert JWT-Authentifizierung?
+Was ist der Leistungsunterschied zwischen SQL-JOIN und Unterabfrage?
+Wie indexiert und durchsucht Elasticsearch Dokumente?
+Was ist das Actor-Modell in der nebenläufigen Programmierung?
+Wie implementiere ich Idempotenz in einer REST-API?
+Was ist das Saga-Muster in Microservices?
+Wie rendert ein Browser eine Webseite von HTML bis zu Pixeln?
+Was ist der Unterschied zwischen Prozess und Thread?
+Wie funktioniert Consistent Hashing in verteilten Caches?
+Was ist das Circuit-Breaker-Muster und wann setze ich es ein?
+Wie funktioniert WebAssembly und welche Probleme löst es?
+Was ist der Unterschied zwischen optimistichem und pessimistischem Locking?
+Wie entwerfe ich ein Schema für eine Multi-Tenant-SaaS-Anwendung?
+Was ist ein Service Mesh und wie funktioniert Istio?
+Worin unterscheidet sich ein Compiler von einem Interpreter?
+Was ist Event Sourcing und worin unterscheidet es sich von CRUD?
+Wie funktioniert DNS-Auflösung Schritt für Schritt?
+Was ist das N+1-Abfrageproblem in ORMs und wie behebe ich es?
+Wie scraped und speichert Prometheus Metriken?
+Was ist der Unterschied zwischen Mocking und Stubbing in Tests?
+Wie implementiere ich Pagination effizient in einer REST-API?
+Was ist das CQRS-Muster und welche Probleme löst es?
+Wie wirkt sich Pythons GIL auf die Multithread-Performance aus?
+Was ist der Unterschied zwischen Stack und Heap im Speicher?
+Wie funktionieren Feature Flags und welche Tools unterstützen sie?
+Was ist Chaos Engineering und wie steige ich ein?
+Worin unterscheidet sich gRPC von REST und wann wähle ich was?
+Was ist ein Bloom-Filter und wofür wird er genutzt?
+Wie funktioniert eine Zero-Trust-Sicherheitsarchitektur?
+Was ist das Strangler-Fig-Muster zur Migration von Altsystemen?
+Wie garantiert Apache Kafka die Reihenfolge von Nachrichten?
+Was ist ein Merkle-Baum und wo wird er eingesetzt?
+Wie wähle ich zwischen PostgreSQL und MongoDB für ein neues Projekt?
+Was ist Tail-Latency und warum ist sie in verteilten Systemen wichtig?
+Wie erweitert OpenID Connect OAuth2?
+Was ist der Unterschied zwischen Unit-, Integrations- und End-to-End-Tests?
+Worin unterscheidet sich ein Reverse Proxy von einem Forward Proxy?
+Was ist Dependency Injection und warum ist sie nützlich?
+Wie lernt ein neuronales Netz durch Backpropagation?
+Was ist der Unterschied zwischen synchroner und asynchroner Nachrichtenübermittlung?
+Wie handhabe ich Secrets Management in einer Cloud-Umgebung?
+Was ist Canary-Deployment und worin unterscheidet es sich von Blue-Green?
+Wie funktioniert ein B-Baum-Index in einer Datenbank?

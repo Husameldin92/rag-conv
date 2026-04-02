@@ -1,0 +1,414 @@
+[
+  {
+    "lang": "en",
+    "text": "How does Kubernetes autoscaling work?"
+  },
+  {
+    "lang": "de",
+    "text": "Wer bist du auf dieser Plattform und wer darf dich nutzen?"
+  },
+  {
+    "lang": "nl",
+    "text": "Leg de belangrijkste voordelen van Spring Boot Actuator uit."
+  },
+  {
+    "lang": "en",
+    "text": "when is the next Delphi Camp happening?"
+  },
+  {
+    "lang": "de",
+    "text": "Gib mir die Schritte aus euren Inhalten, um Micrometer-Tracing in Spring Boot zu aktivieren."
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe gaat het?"
+  },
+  {
+    "lang": "en",
+    "text": "Show the OpenTelemetry export example from the documents."
+  },
+  {
+    "lang": "de",
+    "text": "Wie konfiguriere ich Metriken in Spring Boot 3?"
+  },
+  {
+    "lang": "nl",
+    "text": "Gids voor contenttypes"
+  },
+  {
+    "lang": "en",
+    "text": "Is there a JAX in the next month?"
+  },
+  {
+    "lang": "de",
+    "text": "Kann ein Nutzer im Basic-Tarif Aufzeichnungen ansehen?"
+  },
+  {
+    "lang": "nl",
+    "text": "Geef me de stappen uit het artikel dat je net over observability hebt opgehaald."
+  },
+  {
+    "lang": "en",
+    "text": "How do I enable feature X in the newest Angular if it's not in your docs?"
+  },
+  {
+    "lang": "de",
+    "text": "Kannst du mich mit einem Coursera-Kurs zu Kafka verlinken?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is er veranderd in Angular 18 voor Signals?"
+  },
+  {
+    "lang": "en",
+    "text": "How does useMemo work in React?"
+  },
+  {
+    "lang": "de",
+    "text": "Ich nutze Angular 16 – kann ich das von dir beschriebene Routing-Feature verwenden?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe ver is Berlijn van Hamburg?"
+  },
+  {
+    "lang": "en",
+    "text": "Show me events about Kubernetes."
+  },
+  {
+    "lang": "de",
+    "text": "Verlinke mich zu einem Docker-Kurs auf Coursera."
+  },
+  {
+    "lang": "nl",
+    "text": "Wat zegt Medium over async/await?"
+  },
+  {
+    "lang": "en",
+    "text": "Give me an article about TypeScript types."
+  },
+  {
+    "lang": "de",
+    "text": "Ich bin Backend-Entwickler. Zeig mir passende Tutorials."
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe implementeer ik GraphQL-caching?"
+  },
+  {
+    "lang": "en",
+    "text": "When is next APICon London happening?"
+  },
+  {
+    "lang": "de",
+    "text": "Wann findet die nächste APICon New York statt?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wanneer is de volgende BASTA! Herfst?"
+  },
+  {
+    "lang": "en",
+    "text": "When is next BASTA! Spring happening?"
+  },
+  {
+    "lang": "de",
+    "text": "Wann findet das nächste Delphi Code Camp Düsseldorf statt?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wanneer is de volgende DevOps-training Docker?"
+  },
+  {
+    "lang": "en",
+    "text": "When is next DevOps Training Kubernetes happening?"
+  },
+  {
+    "lang": "de",
+    "text": "Erzähl mir über React useEffect, nur aus Tutorials."
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe schakel ik asynchrone verwerking in Spring Boot in?"
+  },
+  {
+    "lang": "en",
+    "text": "How do I write a unit test for a Spring Boot REST controller?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist eine Standalone-Komponente in Angular und wie erstelle ich eine?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe implementeer ik route guards in Angular?"
+  },
+  {
+    "lang": "en",
+    "text": "How does garbage collection work in the JVM?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Unterschied zwischen TCP und UDP?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe versnelt een relationele database-index queries?"
+  },
+  {
+    "lang": "en",
+    "text": "What is eventual consistency in distributed systems?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie funktioniert der OAuth2-Authorization-Code-Flow?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat zegt het CAP-theorema en waarom is het belangrijk?"
+  },
+  {
+    "lang": "en",
+    "text": "How do I set up a CI/CD pipeline with GitHub Actions?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Unterschied zwischen REST und GraphQL?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe verschilt een WebSocket-verbinding van HTTP?"
+  },
+  {
+    "lang": "en",
+    "text": "What is database sharding and when should I use it?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie funktioniert HTTPS im Detail?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het verschil tussen monorepo- en polyrepo-strategieën?"
+  },
+  {
+    "lang": "en",
+    "text": "How do I implement rate limiting in an API?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist ein Deadlock im Multithreading und wie vermeide ich ihn?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe handelt Redis cache-eviction af?"
+  },
+  {
+    "lang": "en",
+    "text": "What is the difference between horizontal and vertical scaling?"
+  },
+  {
+    "lang": "de",
+    "text": "Worin unterscheidet sich eine Message Queue wie Kafka von einer klassischen Datenbank?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is infrastructure as code en hoe werkt Terraform?"
+  },
+  {
+    "lang": "en",
+    "text": "How does a CDN improve web performance?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Unterschied zwischen symmetrischer und asymmetrischer Verschlüsselung?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe schrijf ik een effectieve database-migratiestrategie?"
+  },
+  {
+    "lang": "en",
+    "text": "What is blue-green deployment and how does it reduce downtime?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie entscheidet ein Load Balancer, welchen Server er anfragt?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is CORS en waarom handhaven browsers het?"
+  },
+  {
+    "lang": "en",
+    "text": "How does JWT authentication work?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Leistungsunterschied zwischen SQL-JOIN und Unterabfrage?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe indexeert en doorzoekt Elasticsearch documenten?"
+  },
+  {
+    "lang": "en",
+    "text": "What is the Actor model in concurrent programming?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie implementiere ich Idempotenz in einer REST-API?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het saga-patroon in microservices?"
+  },
+  {
+    "lang": "en",
+    "text": "How does a browser render a web page from HTML to pixels?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Unterschied zwischen Prozess und Thread?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe werkt consistent hashing in gedistribueerde caches?"
+  },
+  {
+    "lang": "en",
+    "text": "What is a circuit breaker pattern and when should I use it?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie funktioniert WebAssembly und welche Probleme löst es?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het verschil tussen optimistische en pessimistische locking?"
+  },
+  {
+    "lang": "en",
+    "text": "How do I design a schema for a multi-tenant SaaS application?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist ein Service Mesh und wie funktioniert Istio?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe verschilt een compiler van een interpreter?"
+  },
+  {
+    "lang": "en",
+    "text": "What is event sourcing and how does it differ from CRUD?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie funktioniert DNS-Auflösung Schritt für Schritt?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het N+1-queryprobleem in ORM’s en hoe los ik het op?"
+  },
+  {
+    "lang": "en",
+    "text": "How does Prometheus scrape and store metrics?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist der Unterschied zwischen Mocking und Stubbing in Tests?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe implementeer ik paginering efficiënt in een REST-API?"
+  },
+  {
+    "lang": "en",
+    "text": "What is a CQRS pattern and what problems does it solve?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie wirkt sich Pythons GIL auf die Multithread-Performance aus?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het verschil tussen stack en heap in het geheugen?"
+  },
+  {
+    "lang": "en",
+    "text": "How do feature flags work and what tools support them?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist Chaos Engineering und wie steige ich ein?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe verschilt gRPC van REST en wanneer kies ik wat?"
+  },
+  {
+    "lang": "en",
+    "text": "What is a bloom filter and what is it used for?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie funktioniert eine Zero-Trust-Sicherheitsarchitektur?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het strangler fig-patroon voor legacy-migratie?"
+  },
+  {
+    "lang": "en",
+    "text": "How does Apache Kafka guarantee message ordering?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist ein Merkle-Baum und wo wird er eingesetzt?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe kies ik tussen PostgreSQL en MongoDB voor een nieuw project?"
+  },
+  {
+    "lang": "en",
+    "text": "What is tail latency and why does it matter in distributed systems?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie erweitert OpenID Connect OAuth2?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is het verschil tussen unit-, integratie- en end-to-end-tests?"
+  },
+  {
+    "lang": "en",
+    "text": "How does a reverse proxy differ from a forward proxy?"
+  },
+  {
+    "lang": "de",
+    "text": "Was ist Dependency Injection und warum ist sie nützlich?"
+  },
+  {
+    "lang": "nl",
+    "text": "Hoe leert een neuraal netwerk via backpropagation?"
+  },
+  {
+    "lang": "en",
+    "text": "What is the difference between synchronous and asynchronous messaging?"
+  },
+  {
+    "lang": "de",
+    "text": "Wie handhabe ich Secrets Management in einer Cloud-Umgebung?"
+  },
+  {
+    "lang": "nl",
+    "text": "Wat is canary deployment en hoe verschilt het van blue-green?"
+  },
+  {
+    "lang": "en",
+    "text": "How does a B-tree index work in a database?"
+  }
+]

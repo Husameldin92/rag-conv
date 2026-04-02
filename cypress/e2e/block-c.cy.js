@@ -6,17 +6,81 @@
  * 1. Typing the question into the chat input
  * 2. Submitting the question
  * 3. Waiting for the response
- * 4. Generating a CSV/JSON report
+ * 4. Extracting Topic, Synthesis Question (from page text) and LLM answer (prefer GraphQL API)
+ * 5. Generating a CSV/JSON report
+ *
+ * LLM answer: Prefer the GraphQL `userRags` response (`lastTurn.answer`) — same text the app
+ * receives; streaming responses may yield multiple GraphQL payloads; we keep the longest answer.
+ * Fallback: page text after the last "Synthesised question:" line if API capture is empty.
  */
 
 // Load questions synchronously at parse time so Cypress can discover tests
 const questions = require('../fixtures/questions.json')
 // File writing is handled via cy.task() in cypress.config.js
 
-describe('Questions Test Suite', { testIsolation: false }, () => {
+/** Longest answer string in the payload (used while GraphQL may fire multiple times). */
+function extractLongestAnswerFromGraphqlBody(body) {
+  if (!body || !body.data || !body.data.userRags || !body.data.userRags.UserRags) {
+    return ''
+  }
+  let best = ''
+  for (const rag of body.data.userRags.UserRags) {
+    if (!rag.turns) continue
+    for (const turn of rag.turns) {
+      if (turn.answer && String(turn.answer).length > best.length) {
+        best = String(turn.answer).trim()
+      }
+    }
+  }
+  return best
+}
+
+/** GraphQL response shape: data.userRags.UserRags[].turns[].answer */
+function extractLlmAnswerFromGraphqlBody(body, currentQuestion) {
+  if (!body || !body.data || !body.data.userRags || !body.data.userRags.UserRags) {
+    return ''
+  }
+  const rags = body.data.userRags.UserRags
+  for (let i = rags.length - 1; i >= 0; i--) {
+    const rag = rags[i]
+    if (!rag.turns || !rag.turns.length) continue
+    const lastTurn = rag.turns[rag.turns.length - 1]
+    if (!lastTurn.answer) continue
+    const q = (lastTurn.question || '').toLowerCase()
+    const cur = (currentQuestion || '').toLowerCase()
+    const questionMatches =
+      q &&
+      cur &&
+      (q.includes(cur.substring(0, Math.min(20, cur.length))) ||
+        cur.includes(q.substring(0, Math.min(20, q.length))))
+    if (questionMatches || rag.turns.length === 1) {
+      return String(lastTurn.answer).trim()
+    }
+  }
+  const lastRag = rags[rags.length - 1]
+  if (lastRag.turns && lastRag.turns.length) {
+    const t = lastRag.turns[lastRag.turns.length - 1]
+    return t.answer ? String(t.answer).trim() : ''
+  }
+  return ''
+}
+
+/** Fallback when API body is not captured */
+function extractLlmAnswerFromPageText(bodyText) {
+  const synIdx = bodyText.lastIndexOf('Synthesised question:')
+  if (synIdx === -1) return ''
+  const after = bodyText.slice(synIdx)
+  const rest = after.replace(/^[\s\S]*?Synthesised question:\s*[^\n]+\n([\s\S]*)/i, '$1')
+  if (rest === after) return ''
+  return rest.trim().slice(0, 100000)
+}
+
+// Each question can take several minutes (LLM stream). Default Mocha/Cypress test timeout is 60s.
+describe('Questions Test Suite', { testIsolation: false, timeout: 600000 }, () => {
   let reportData = []
   let currentUser = ''
   let reportTimestamp = ''
+  const graphqlCapture = { longestAnswer: '', lastBody: null }
 
   before(() => {
     // Generate unique timestamp for this test run
@@ -33,12 +97,29 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       .should('exist')
       .should('be.visible')
     
-    cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 15000 })
+    cy.getChatInput()
       .should('exist')
       .should('be.visible')
     
     // Extract current user from environment
     currentUser = Cypress.env('USER_USERNAME') || 'Unknown User'
+
+    const graphqlUrl =
+      Cypress.env('GRAPHQL_URL') || 'https://concord.sandsmedia.com/graphql'
+    cy.intercept('POST', graphqlUrl, (req) => {
+      req.on('response', (res) => {
+        try {
+          const body = res.body
+          graphqlCapture.lastBody = body
+          const longest = extractLongestAnswerFromGraphqlBody(body)
+          if (longest.length > graphqlCapture.longestAnswer.length) {
+            graphqlCapture.longestAnswer = longest
+          }
+        } catch (_) {
+          // ignore parse errors
+        }
+      })
+    })
   })
 
   after(() => {
@@ -53,6 +134,8 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
       cy.log(`  Question: ${row.question}`)
       cy.log(`  Topic: ${row.topic}`)
       cy.log(`  Synthesis Question: ${row.synthesisQuestion}`)
+      const ans = row.llmAnswer || ''
+      cy.log(`  LLM Answer (preview): ${ans.length > 200 ? `${ans.substring(0, 200)}...` : ans || '(empty)'}`)
       cy.log(`  Response Time: ${row.responseTime} ms`)
     })
     
@@ -75,63 +158,82 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
     })
   })
 
-
   questions.forEach((question, index) => {
     it(`Question ${index + 1}: "${question.substring(0, 50)}${question.length > 50 ? '...' : ''}"`, () => {
-      // Wait until the chat input is unlocked/ready for the next question
-      cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 30000 })
-        .should('exist')
-        .should('be.visible')
-        .should('not.be.disabled')
-        .should('not.have.attr', 'disabled')
-      
-      // Clear and type the question
-      cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]')
+      // Previous question must be fully finished before we type the next one
+      cy.waitForComposerReadyForNewQuestion({ timeout: 180000 })
+      cy.dismissOverlays()
+
+      cy.then(() => {
+        graphqlCapture.longestAnswer = ''
+        graphqlCapture.lastBody = null
+      })
+
+      // Flow: wait for composer → type → send → WAIT for full LLM answer → only then next it() runs
+      cy.log(`▶ Question ${index + 1}/${questions.length}: type and send, then wait for complete answer`)
+
+      // 1) Type the question → 2) wait until send is active → 3) click send
+      cy.getChatInput()
         .clear()
         .type(question, { force: true })
-      
-      cy.get('button.send-button', { timeout: 10000 })
-        .should('be.visible')
-        .should('not.be.disabled')
-        .should('not.have.attr', 'disabled')
-      
+
       // Declare variables outside the callback so they're accessible
       let topic = 'Not found'
       let synthesisQuestion = 'Not found'
+      let llmAnswer = ''
       let responseTime = 0
       let startTime = 0
-      
-      // Record start time just before clicking send (response time measurement starts here)
-      cy.then(() => {
-        startTime = Date.now()
-        cy.log(`⏱️  Response time measurement started at: ${startTime}`)
-      })
 
-      cy.get('button.send-button')
-        .click()
-      
-      cy.get('button.send-button', { timeout: 5000 })
-        .should('have.attr', 'disabled')
-      
-      
-      cy.get('textarea[placeholder="Frag die Entwickler Intelligence"]', { timeout: 120000 })
-        .should('exist')
+      // Scoped to composer; assert ready, then re-query and native-click (avoids undefined cy.wrap subject after Angular updates)
+      cy.getComposerSendButton({ timeout: 30000 })
         .should('be.visible')
         .should('not.be.disabled')
         .should('not.have.attr', 'disabled')
-        .then(() => {
-          // Calculate response time when textarea becomes enabled (response is ready)
-          const endTime = Date.now()
-          responseTime = endTime - startTime
-          cy.log(`⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} seconds)`)
+      cy.getComposerSendButton({ timeout: 10000 })
+        .first()
+        .should('be.visible')
+        .should('not.be.disabled')
+        .then(($el) => {
+          const node = $el && $el[0]
+          if (!node) throw new Error('Composer send button not found for click')
+          startTime = Date.now()
+          node.click()
         })
-      
- 
-      cy.wait(5000)
-      
+
+      // WAIT: stream ends + answer visible (sequential; no next question until this passes)
+      cy.waitForLlmAnswerComplete({
+        streamTimeout: 120000,
+        timeout: 300000,
+        answerTimeout: 180000,
+        getGraphqlLength: () => (graphqlCapture.longestAnswer || '').length,
+      })
+
+      cy.then(() => {
+        const endTime = Date.now()
+        responseTime = endTime - startTime
+        cy.log(
+          `⏱️  Response time: ${responseTime} ms (${(responseTime / 1000).toFixed(2)} s) — until answer complete`
+        )
+      })
+
+      cy.wait(1000)
+
       cy.get('body', { timeout: 10000 }).then(($body) => {
         const bodyText = $body.text()
-        
+
+        llmAnswer = extractLlmAnswerFromGraphqlBody(graphqlCapture.lastBody, question)
+        if (!llmAnswer) {
+          llmAnswer = graphqlCapture.longestAnswer
+        }
+        if (!llmAnswer) {
+          llmAnswer = extractLlmAnswerFromPageText(bodyText)
+        }
+        if (llmAnswer) {
+          cy.log(`✓ LLM answer captured (${llmAnswer.length} chars)`)
+        } else {
+          cy.log(`✗ LLM answer not captured from API or page fallback`)
+        }
+
         // Find the LAST occurrence of "Question topics:" (most recent answer)
         const topicPattern = /Question topics?:\s*([^\n]+)/gi
         let topicMatch = null
@@ -166,11 +268,12 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
           question: question,
           topic: topic,
           synthesisQuestion: synthesisQuestion,
+          llmAnswer: llmAnswer,
           responseTime: responseTime,
           questionNumber: index + 1
         })
         
-        cy.log(`Question ${index + 1} data extracted - Topic: ${topic}, Synthesis: ${synthesisQuestion ? synthesisQuestion.substring(0, 50) + '...' : 'N/A'}, Response Time: ${responseTime} ms`)
+        cy.log(`Question ${index + 1} data extracted - Topic: ${topic}, Synthesis: ${synthesisQuestion ? synthesisQuestion.substring(0, 50) + '...' : 'N/A'}, LLM chars: ${llmAnswer ? llmAnswer.length : 0}, Response Time: ${responseTime} ms`)
         
         // Generate and save reports after each question (incremental saving)
         const csvContent = generateCSV(reportData)
@@ -199,14 +302,24 @@ describe('Questions Test Suite', { testIsolation: false }, () => {
 
 // Helper function to generate CSV
 function generateCSV(data) {
-  if (data.length === 0) return 'User,Question,Topic,Synthesis Question,Response Time (ms)\n'
-  
-  const headers = ['User', 'Question', 'Topic', 'Synthesis Question', 'Response Time (ms)']
+  if (data.length === 0) {
+    return 'User,Question,Topic,Synthesis Question,LLM Answer,Response Time (ms)\n'
+  }
+
+  const headers = [
+    'User',
+    'Question',
+    'Topic',
+    'Synthesis Question',
+    'LLM Answer',
+    'Response Time (ms)'
+  ]
   const rows = data.map(row => [
     escapeCSV(row.user),
     escapeCSV(row.question),
     escapeCSV(row.topic),
     escapeCSV(row.synthesisQuestion),
+    escapeCSV(row.llmAnswer || ''),
     escapeCSV(row.responseTime || 0)
   ])
   
