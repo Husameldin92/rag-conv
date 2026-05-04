@@ -21,6 +21,7 @@
     "compare-pocs-and-llm": "node src/compare-chunk-csvs-and-llm.js",
     "run-one-question": "node src/run-one-question.js",
     "batch-discovery-llm": "node src/batch-discovery-llm-answers.js",
+    "repeat-one-question-llm": "node src/repeat-one-question-llm.js",
     "compose-multilang": "node scripts/compose-multilang.mjs"
   },
   "keywords": [
