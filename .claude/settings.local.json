@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brctl status *)",
+      "Bash(brctl download *)",
+      "Bash(xargs ls -lO)",
+      "Bash(rm /Users/osmanhusam/Desktop/RAG-CON/.git/index)",
+      "Bash(git reset *)"
+    ]
+  }
+}

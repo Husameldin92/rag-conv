@@ -81,3 +81,20 @@ Cypress.Commands.add('dismissOverlays', () => {
     }
   })
 })
+
+const { textFromNodeDeep } = require('./perf-shadow-text')
+
+/**
+ * Full plain text including open shadow roots (Performance Metrics / Stage tables are often inside
+ * web components — `cy.get('body').invoke('text')` misses them, which leaves Token received / totals empty).
+ */
+Cypress.Commands.add('getDocumentTextIncludingShadow', () => {
+  return cy.document().then((doc) => textFromNodeDeep(doc.body))
+})
+
+const { extractBackendStageTableFromDom } = require('./staging-backend-stage-dom')
+
+/** Rows from the on-screen backend Stage table (`STAGE`, `TIMESTAMP`, `DELTA (MS)`). */
+Cypress.Commands.add('getBackendStageTableRows', () => {
+  return cy.document().then((doc) => extractBackendStageTableFromDom(doc.body))
+})

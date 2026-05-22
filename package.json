@@ -8,7 +8,15 @@
     "test": "cypress run",
     "test:quick": "cypress run --spec 'cypress/e2e/quick-test.cy.js'",
     "test:production-rag": "cypress run --spec 'cypress/e2e/production-conversational-rag.cy.js'",
-    "test:staging-synthesis": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-synthesis-answer-check.cy.js'"
+    "test:staging-synthesis": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-synthesis-answer-check.cy.js'",
+    "test:staging-performance": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-frontend-backend-performance.cy.js'",
+    "test:staging-performance:one": "CYPRESS_PERF_REPEAT_COUNT=1 CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-frontend-backend-performance.cy.js'",
+    "test:staging-performance:chrome": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --browser chrome --spec 'cypress/e2e/staging-frontend-backend-performance.cy.js'",
+    "test:staging-performance:chrome:one": "CYPRESS_PERF_REPEAT_COUNT=1 CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --browser chrome --spec 'cypress/e2e/staging-frontend-backend-performance.cy.js'",
+    "test:staging-performance:open": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress open",
+    "test:staging-backend-stage": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --spec 'cypress/e2e/staging-backend-stage-table.cy.js'",
+    "test:staging-backend-stage:chrome": "CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --browser chrome --spec 'cypress/e2e/staging-backend-stage-table.cy.js'",
+    "test:staging-backend-stage:chrome:one": "CYPRESS_PERF_REPEAT_COUNT=1 CYPRESS_BASE_URL=https://staging.entwickler.de CYPRESS_LOGIN_URL=https://staging.entwickler.de/login/ CYPRESS_APP_ORIGIN=https://staging.entwickler.de cypress run --browser chrome --spec 'cypress/e2e/staging-backend-stage-table.cy.js'"
   },
   "keywords": [
     "cypress",

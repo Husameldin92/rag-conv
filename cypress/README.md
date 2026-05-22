@@ -15,6 +15,7 @@ cypress/
 ├── e2e/
 │   ├── production-conversational-rag.cy.js  # Production entwickler.de — full fixture run + reports
 │   ├── staging-synthesis-answer-check.cy.js # Questions Test Suite against staging.entwickler.de (see npm script)
+│   ├── staging-frontend-backend-performance.cy.js # Staging: frontend vs backend perf tables → CSV/JSON
 │   └── quick-test.cy.js                     # Quick test with 3 questions for verification
 └── reports/
     ├── questions-report-{timestamp}.csv    # Production: includes LLM Answer; staging spec omits it (lighter CSV/JSON)
@@ -71,6 +72,24 @@ npm run test:production-rag
 npm run test:staging-synthesis
 ```
 Requires `STAGING_AUTH_*` (HTTP Basic Auth) and `STAGING_USER_*` or `USER_*` for the app login form (see `cypress.env.json.example`).
+
+### Run staging frontend vs backend performance (perf tables → `performance-comparison-{timestamp}.csv`)
+```bash
+npm run test:staging-performance
+```
+Same credentials as `test:staging-synthesis`. The page must expose the numbered frontend timings and the backend STAGE/TIMESTAMP table. **Default:** the question **`Wie funktioniert das Routing in Angular?`** is sent **10** times (`CYPRESS_PERF_REPEAT_COUNT`, `CYPRESS_PERF_QUESTION` to override).
+
+### Run staging backend Stage table only (full table → `backend-stage-table-{timestamp}.csv`)
+```bash
+npm run test:staging-backend-stage:chrome:one
+```
+Exports **one** CSV per run config: `backend-stage-{user}-{timestamp}.csv`. Edit **`RUN_CONFIG`** in `staging-backend-stage-table.cy.js` (**user**, **question**, **runCount**). App login comes from **`cypress.env.json`** (`STAGING_USER_*`, `STAGING_AUTH_*`). The CSV has **Run 1**, **Run 2**, … each with the full Stage table from the DOM.
+
+**Interactive (see the real browser — login, send, etc.):** open Cypress with staging URLs set, then run **`staging-frontend-backend-performance.cy.js`**:
+```bash
+npm run test:staging-performance:open
+```
+Or: set `CYPRESS_BASE_URL`, `CYPRESS_LOGIN_URL`, `CYPRESS_APP_ORIGIN` to `https://staging.entwickler.de` and run `npx cypress open`.
 
 ### Run Quick Test (3 questions for verification)
 ```bash

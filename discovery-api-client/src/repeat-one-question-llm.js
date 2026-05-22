@@ -6,13 +6,15 @@
  * Usage:
  *   node src/repeat-one-question-llm.js --runs 100 "Your question?"
  *   node src/repeat-one-question-llm.js --from-file path/to/question.txt
- *   node src/repeat-one-question-llm.js --runs 10 --delay-ms 3000 "Your question?"
+ *   node src/repeat-one-question-llm.js --runs 10 --delay-ms 3000 "Wie funktioniert das Routing in Angular?"
  *
- * Output: reports/repeat-one-question-llm-{timestamp}.csv
+ * Output:
+ *   - reports/repeat-one-question-llm-{timestamp}.csv (answers from streamUrl)
+ *   - reports/repeat-one-question-llm-{timestamp}.json (**GraphQL `queryResult` per run**: `results`, `streamUrl`, `userRagId` — no streamed LLM body)
  *
- * CSV includes **TestTable**: the first markdown or HTML `<table>...</table>` block in the streamed
- * answer (typically the Concord “test table” emitted at the start of the reply).
- * npm run repeat-one-question-llm -- --runs 100 --delay-ms 5000 "What’s the difference between testing a component in isolation vs testing the full app with Cypress?"
+ * CSV **TestTable** column: first real markdown/HTML table if present; otherwise the leading Concord block
+ * (`Keyword`, `Question topics`, `Synthesised question`).
+ * npm run repeat-one-question-llm -- --runs 10 --delay-ms 3000 "Wie funktioniert das Routing in Angular?"
  */
 import fetch from 'node-fetch';
 import fs from 'fs';
@@ -191,8 +193,44 @@ function stripLeadingCodeFence(inner) {
   return m ? m[1] : inner;
 }
 
+const SYNTH_QUESTION_LINE = /^Synthesi[sz]ed question:\s*/i;
+
 /**
- * First table appearing in streamed LLM body: prefers earliest of HTML `<table>` vs markdown pipes.
+ * Opening block Concord often streams first: Keyword JSON, Question topics, Synthesised/Synthesized question —
+ * before the main answer. Responses rarely use markdown | tables here; users still track this block as "the test table".
+ */
+function extractConcordRagPreamble(text) {
+  if (!text || typeof text !== 'string') return '';
+  const lines = text.replace(/\r\n/g, '\n').split('\n');
+
+  let startIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (t.startsWith('Keyword:') || /^Question topics:/i.test(t)) {
+      startIdx = i;
+      break;
+    }
+  }
+  if (startIdx < 0) return '';
+
+  let synthIdx = -1;
+  for (let i = startIdx; i < lines.length; i++) {
+    if (SYNTH_QUESTION_LINE.test(lines[i].trim())) {
+      synthIdx = i;
+      break;
+    }
+  }
+  if (synthIdx < 0) return '';
+
+  let end = synthIdx + 1;
+  while (end < lines.length && !lines[end].trim()) {
+    end += 1;
+  }
+  return lines.slice(startIdx, end).join('\n').trimEnd();
+}
+
+/**
+ * “Test table” for CSV: prefers real markdown/HTML table; otherwise the leading Keyword/topics/synthesis block.
  */
 function extractFirstStreamTestTable(answer) {
   if (!answer || typeof answer !== 'string') return '';
@@ -221,7 +259,14 @@ function extractFirstStreamTestTable(answer) {
     }
   }
 
-  return best || '';
+  if (best) return best;
+  const preamble = extractConcordRagPreamble(answer);
+  if (preamble) return preamble;
+  const fromFence = stripLeadingCodeFence(answer);
+  if (fromFence !== answer) {
+    return extractConcordRagPreamble(fromFence);
+  }
+  return '';
 }
 
 function parseArgs(argv) {
@@ -286,6 +331,14 @@ function writeCsv(rows, outPath) {
   fs.writeFileSync(outPath, lines.join('\n'), 'utf-8');
 }
 
+function cloneForJson(payload) {
+  return JSON.parse(JSON.stringify(payload));
+}
+
+function writeGraphqlRunsJson(doc, outPath) {
+  fs.writeFileSync(outPath, JSON.stringify(doc, null, 2), 'utf-8');
+}
+
 async function main() {
   const { runs, delayMs, question, graphqlEndpoint } = parseArgs(process.argv);
   if (!question) {
@@ -305,8 +358,15 @@ Optional: GRAPHQL_ENDPOINT env or --graphql URL (default: ${DEFAULT_GRAPHQL})`);
   if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const outPath = path.join(reportsDir, `repeat-one-question-llm-${timestamp}.csv`);
+  const jsonPath = path.join(reportsDir, `repeat-one-question-llm-${timestamp}.json`);
 
   const rows = [];
+  const graphqlJson = {
+    graphqlEndpoint,
+    queryType: QUERY_TYPE,
+    question,
+    runs: []
+  };
 
   for (let i = 0; i < runs; i++) {
     const runNumber = i + 1;
@@ -344,15 +404,21 @@ Optional: GRAPHQL_ENDPOINT env or --graphql URL (default: ${DEFAULT_GRAPHQL})`);
       answerChars: answer.length,
       error: err
     });
+    graphqlJson.runs.push(
+      api.ok
+        ? { runNumber, startedAt, queryResult: cloneForJson(api.payload) }
+        : { runNumber, startedAt, error: api.error || 'API failed' }
+    );
     writeCsv(rows, outPath);
-    console.log(`   💾 ${outPath}\n`);
+    writeGraphqlRunsJson(graphqlJson, jsonPath);
+    console.log(`   💾 ${outPath}\n   💾 ${jsonPath}\n`);
 
     if (i < runs - 1 && delayMs > 0) {
       await new Promise(r => setTimeout(r, delayMs));
     }
   }
 
-  console.log(`✨ Done. ${runs} rows → ${outPath}`);
+  console.log(`✨ Done. ${runs} rows → ${outPath}\n   ${jsonPath}`);
 }
 
 main().catch(e => {
