@@ -5,7 +5,27 @@
       "Bash(brctl download *)",
       "Bash(xargs ls -lO)",
       "Bash(rm /Users/osmanhusam/Desktop/RAG-CON/.git/index)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(node /Users/osmanhusam/Desktop/RAG-CON/scripts/merge-backend-stage-csvs.js)",
+      "Bash(ls ~/projects 2>/dev/null || echo \"no projects folder\")",
+      "Read(//Users/osmanhusam/**)",
+      "Bash(awk '{print $NF}')",
+      "Bash(xargs -I{} brctl download {})",
+      "Bash(mkdir -p ~/projects)",
+      "Bash(git clone *)",
+      "Bash(git -C ~/projects/RAG-CON log --oneline -5)",
+      "Bash(rsync -av --exclude=.git --exclude=node_modules /Users/osmanhusam/Desktop/RAG-CON/cypress/e2e/staging-backend-stage-table.cy.js /Users/osmanhusam/Desktop/RAG-CON/cypress/e2e/staging-frontend-backend-performance.cy.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-console-hook.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-cypress-env.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-dom-scroll.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-shadow-text.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-backend-stage-dom.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-backend-stage-parsers.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-performance-parsers.js ~/projects/RAG-CON/cypress/e2e/)",
+      "Bash(rsync -av /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-console-hook.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-cypress-env.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-dom-scroll.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/perf-shadow-text.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-backend-stage-dom.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-backend-stage-parsers.js /Users/osmanhusam/Desktop/RAG-CON/cypress/support/staging-performance-parsers.js ~/projects/RAG-CON/cypress/support/)",
+      "Bash(cp /Users/osmanhusam/Desktop/RAG-CON/discovery-api-client/src/performance_comparison_round4.csv ~/projects/RAG-CON/discovery-api-client/src/)",
+      "Bash(git -C ~/projects/RAG-CON status)",
+      "Bash(# Remove wrongly placed support files from e2e/ *)",
+      "Bash(git -C ~/projects/RAG-CON status --short)",
+      "Bash(git -C ~/projects/RAG-CON check-ignore -v cypress/support/perf-console-hook.js cypress/e2e/staging-frontend-backend-performance.cy.js)",
+      "Bash(git -C ~/projects/RAG-CON log --oneline --all -- cypress/e2e/staging-frontend-backend-performance.cy.js cypress/support/perf-console-hook.js)",
+      "Bash(git -C ~/projects/RAG-CON diff --stat)"
+    ],
+    "additionalDirectories": [
+      "/Users/osmanhusam/projects/RAG-CON/cypress/e2e"
     ]
   }
 }

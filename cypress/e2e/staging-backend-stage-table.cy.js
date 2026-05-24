@@ -5,10 +5,10 @@ const STAGING_ORIGIN = 'https://staging.entwickler.de'
 // =============================================================================
 const RUN_CONFIG = {
   /** Label for the CSV*/
-  user: 'quick test',
+  user: 'Short LLM Answer',
 
   /** Question sent on every run */
-  question: 'What is cypress?',
+  question: 'Erkläre Reactive Programming mit RxJS in Angular: Observables, Subjects, Operators und Best Practices.',
 
   /** How many times to ask the same question*/
   runCount: 1
