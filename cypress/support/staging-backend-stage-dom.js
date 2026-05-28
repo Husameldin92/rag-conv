@@ -5,7 +5,10 @@
 
 const { textFromNodeDeep, querySelectorAllDeep } = require('./perf-shadow-text')
 
-const STAGE_CELL_RE = /^[a-zA-Z][a-zA-Z0-9]*(?::[a-zA-Z0-9+]+)+$/
+// Stage name pattern. Allows the renamed-on-2026-05-28 stage
+// "discovery:canUserAccessRag + vectorSearchResult" (spaces + plus signs)
+// and the older "preDiscovery:shouldRetrieve+getKeywords" form.
+const STAGE_CELL_RE = /^[a-zA-Z][a-zA-Z0-9]*(?::[a-zA-Z0-9+ ]+)+$/
 const HEADER_STAGE = /^stage$/i
 const HEADER_TIMESTAMP = /^timestamp$/i
 
