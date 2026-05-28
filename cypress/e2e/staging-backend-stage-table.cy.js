@@ -8,7 +8,7 @@ const RUN_CONFIG = {
   user: 'Short LLM Answer',
 
   /** Question sent on every run */
-  question: 'Erkläre Reactive Programming mit RxJS in Angular: Observables, Subjects, Operators und Best Practices.',
+  question: 'what is cypress?',
 
   /** How many times to ask the same question*/
   runCount: 1

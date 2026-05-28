@@ -22,7 +22,13 @@
       "Bash(git -C ~/projects/RAG-CON status --short)",
       "Bash(git -C ~/projects/RAG-CON check-ignore -v cypress/support/perf-console-hook.js cypress/e2e/staging-frontend-backend-performance.cy.js)",
       "Bash(git -C ~/projects/RAG-CON log --oneline --all -- cypress/e2e/staging-frontend-backend-performance.cy.js cypress/support/perf-console-hook.js)",
-      "Bash(git -C ~/projects/RAG-CON diff --stat)"
+      "Bash(git -C ~/projects/RAG-CON diff --stat)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Read(//mnt/user-data/**)",
+      "Bash(mkdir -p ~/.claude/uploads)",
+      "Bash(cp \"/Users/osmanhusam/Desktop/RAG-CON/cypress/reports/backend-stage-Short-LLM-Answer-2026-05-24T19-25-52.csv\" ~/.claude/uploads/)",
+      "Bash(cp \"/Users/osmanhusam/Desktop/RAG-CON/cypress/reports/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv\" ~/.claude/uploads/ && ls -la ~/.claude/uploads/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv)"
     ],
     "additionalDirectories": [
       "/Users/osmanhusam/projects/RAG-CON/cypress/e2e"
