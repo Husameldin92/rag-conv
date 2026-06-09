@@ -28,7 +28,12 @@
       "Read(//mnt/user-data/**)",
       "Bash(mkdir -p ~/.claude/uploads)",
       "Bash(cp \"/Users/osmanhusam/Desktop/RAG-CON/cypress/reports/backend-stage-Short-LLM-Answer-2026-05-24T19-25-52.csv\" ~/.claude/uploads/)",
-      "Bash(cp \"/Users/osmanhusam/Desktop/RAG-CON/cypress/reports/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv\" ~/.claude/uploads/ && ls -la ~/.claude/uploads/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv)"
+      "Bash(cp \"/Users/osmanhusam/Desktop/RAG-CON/cypress/reports/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv\" ~/.claude/uploads/ && ls -la ~/.claude/uploads/backend-stage-Short-LLM-Answer-2026-05-24T19-32-03.csv)",
+      "mcp__developer-intelligence-mcp__new_conversation",
+      "mcp__developer-intelligence-mcp__find_best_practice",
+      "mcp__developer-intelligence-mcp__ask_experts",
+      "mcp__developer-intelligence-mcp__find_content",
+      "mcp__developer-intelligence-mcp__explore_content"
     ],
     "additionalDirectories": [
       "/Users/osmanhusam/projects/RAG-CON/cypress/e2e"
