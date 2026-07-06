@@ -22,7 +22,8 @@
     "run-one-question": "node src/run-one-question.js",
     "batch-discovery-llm": "node src/batch-discovery-llm-answers.js",
     "repeat-one-question-llm": "node src/repeat-one-question-llm.js",
-    "compose-multilang": "node scripts/compose-multilang.mjs"
+    "compose-multilang": "node scripts/compose-multilang.mjs",
+    "test:advanced-retrieval": "node --test src/advanced-retrieval-regression.test.js"
   },
   "keywords": [
     "graphql",
