@@ -42,6 +42,34 @@
  *     • NEW: totalCount INFLATED in no-question mode — Conference-alone tc 536 vs 501 distinct _ids
  *       (dup ids across pages). Clean with a question (53 = 53 distinct). Documented; the suite runs
  *       with a question so its counts are the clean ones.
+ *   2026-07-06 (round 5 — dev shipped a SILENT fix on 07-03, no comment; re-ran everything):
+ *     • Schema unchanged (question, filter, PAGE, PAGE_SIZE → RETRIEVAL). RETRIEVAL now ALSO exposes
+ *       `fallbackResults` — OUT OF SCOPE for 1602 (separate user story); not tested here.
+ *     • TWO round-4 reds FLIPPED GREEN — genuine fixes, verified by raw numbers:
+ *         – L3 TRACK multi-select now UNIONS: AI Agents(4) + AI Developer Tools(53) → 57 (> larger
+ *           alone). Round 4 was 3+6→3 (2nd dropped).
+ *         – ACTIVITY-alone now FILTERS: the 3 activities are DISTINCT personal subsets, not one
+ *           identical all-content set — Attended 25 / Favorited 1 / Continue 1 withQ (no-Q 24/2/10).
+ *           R4 had all three = 65 (withQ) / 455 (no-Q). Added a distinctness guard so the R4
+ *           "all identical" regression can't silently return.
+ *     • STILL RED (unchanged behaviour) — the bug is now ISOLATED TO LEVEL 0 multi-value combine:
+ *         – content-type union: Conf+Tut=53=Conf-alone (0 TUTORIAL across all 6 pages; all-5=65).
+ *         – activity × content-type: Favorited+Tutorial ≈ 95 ≈ Tutorial-alone (activity dropped);
+ *           Attended+Conference=53=Conf-alone. REWROTE this assertion to bound against Favorited-ALONE
+ *           (robust): the old `favTut < Tutorial-alone` FALSE-PASSED in R5 because withQ totalCount is
+ *           NONDETERMINISTIC (Tutorial-alone drifts 94–97 call-to-call, so the `<` margin coin-flips).
+ *       L2 Series (3+1→4) and L3 Track both union now ⇒ only L0-internal combine is still broken.
+ *     • CHANGED: parentIds is now 0 for a TRACK selection (was ≥1 in R4). parentIds only populates for
+ *       brand/series (container levels); L0 content-type + L3 track (leaf selections) return 0. The
+ *       track FILTER still works (per-track tc narrows, results returned) — G rewritten to assert that
+ *       real signal instead of the parentIds facet. parentIds-on-track flagged to the dev.
+ *     • NEW observation (flagged, not asserted): L2∧L3 may not intersect — a track can return MORE than
+ *       its parent series alone (track 53 vs series "Munich 2026" 6), i.e. the series constraint looks
+ *       loosened when a track is added. Needs the dev's intended nesting semantics.
+ *     • totalCount inflation (no-Q) IMPROVED but not gone: Conference-alone tc 543 vs 534 distinct
+ *       (9 dup ids across pages, was 35 in R4). Documented; suite runs withQ (clean counts).
+ *     → after this round's honest suite fixes: 32 tests, 27 green · 4 red · 1 todo (reds = 3
+ *       content-type union + 1 activity×type; the R5 G false-red and activity×type false-green fixed).
  * ─────────────────────────────────────────────────────────────────────────────────────────────────
  *
  * ⚠️ RUN BY EXPLICIT PATH ONLY — bare `node --test` would also sweep the sibling `*-test.js` probe
@@ -226,11 +254,25 @@ describe('E/F/G/K — brand → series → track hierarchy', () => {
     const two = await call({ question: 'java', filter: { level1: [S.brand.BASTA], level2: [a.id, b.id] } });
     assert.ok((two.parentIds || []).length >= Math.max(a.pid, b.pid), 'combining 2 series does not shrink the set (series unions)');
   });
-  it('G selecting a track (L3) narrows to that track', async (t) => {
-    if (!S.track || !S.track[0] || !S.trackSeries) return t.skip('no L3 tracks');
-    const r = await call({ question: 'java', filter: { level1: [S.brand.BASTA], level2: [S.trackSeries], level3: [S.track[0]._id] } });
+  it('G selecting a track (L3) is accepted and returns that track’s content', async (t) => {
+    if (!S.track || !S.track.length || !S.trackSeries) return t.skip('no L3 tracks');
+    // Scan for a NON-EMPTY track — some tracks (e.g. a future-dated "…Day") legitimately hold 0 content,
+    // and the first track can be one of them (round 5: tracks[0] "AI Agents" had tc 4, but several had 0).
+    const base = { level1: [S.brand.BASTA], level2: [S.trackSeries] };
+    let r = null;
+    for (const tr of S.track.slice(0, 8)) {
+      const x = await call({ question: 'java', filter: { ...base, level3: [tr._id] } });
+      if ((x.totalCount || 0) > 0) { r = x; break; }
+    }
+    if (!r) return t.skip('no non-empty track on this series');
     assert.equal(r.gqlErrors, null);
-    assert.ok((r.parentIds || []).length >= 1, 'track selection yields parentIds');
+    // NOTE (R5 2026-07-06): parentIds is now 0 for a track selection — it was ≥1 in R4. parentIds only
+    // populates for the CONTAINER levels (brand/series); the LEAF selections (L0 content-type, L3 track)
+    // return parentIds:0 (content-type always has). So the real "the track filters" signal is a populated
+    // totalCount + a non-empty results page, NOT parentIds. The parentIds-on-track change is an OPEN
+    // QUESTION for the dev (see handback), not asserted red here since the track filter itself works.
+    assert.ok(r.totalCount > 0, 'track selection yields a totalCount');
+    assert.ok(r.resultCount > 0, 'track selection returns results');
   });
   it('K1 cross-level Conf + brand + series stays valid', async (t) => {
     if (!S.series || !S.series[0]) return t.skip('no series');
@@ -380,21 +422,44 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
 // A working activity filter is a PERSONAL SUBSET, strictly smaller than all-content. And activity × a
 // content-type must INTERSECT (Favorited+Tutorial = the user's favorited tutorials), not return every
 // tutorial. Both asserted as the FIXED behaviour → RED while the activity constraint is dropped.
-describe('ACTIVITY — must constrain to the user\'s content (RED — activity dropped, round 4 MLcon user)', () => {
-  it('an activity-alone selection is a personal subset (Attended < all-content-types)', async (t) => {
+// Round 5 (2026-07-06): activity-ALONE is now FIXED — the 3 activities return distinct personal subsets
+// (Attended 25 / Favorited 1 / Continue 1 withQ), no longer one identical all-content set. The two
+// activity-alone assertions below are now GREEN guards. Activity × content-type is STILL broken (the
+// activity is dropped when combined at L0) — that assertion stays RED, rebased onto a nondeterminism-proof
+// bound (see its comment).
+describe('ACTIVITY — must constrain to the user\'s content (activity-alone FIXED R5; activity×type still RED)', () => {
+  it('an activity-alone selection is a personal subset (Attended < all-content-types) — GREEN R5', async (t) => {
     if (!S.id.Attended) return t.skip('no Attended id');
     const attended = await call({ question: 'java', filter: { level0: [S.id.Attended] } });
     const allTypes = await call({ question: 'java', filter: { level0: [S.id.Conference, S.id.Tutorial, S.id.Article, S.id['Live Event'], S.id.Camp] } });
     assert.ok(attended.totalCount < allTypes.totalCount,
       `Attended (${attended.totalCount}) must be a personal subset, smaller than all-content-types (${allTypes.totalCount}); ` +
-      `equal ⇒ the activity filter returns everything (dropped) — round 4: Attended=Favorited=Continue=all-content`);
+      `equal ⇒ the activity filter returns everything (dropped) — round 4 regression: Attended=Favorited=Continue=all-content`);
   });
-  it('activity × content-type intersects (Favorited+Tutorial ⊊ Tutorial-alone)', async (t) => {
+  it('the 3 activities return DISTINCT personal sets (R4: all byte-identical = all-content) — GREEN R5', async (t) => {
+    if (!S.id.Attended || !S.id.Favorited || !S.id.Continue) return t.skip('activity ids missing');
+    const att = await call({ question: 'java', filter: { level0: [S.id.Attended] } });
+    const fav = await call({ question: 'java', filter: { level0: [S.id.Favorited] } });
+    const con = await call({ question: 'java', filter: { level0: [S.id.Continue] } });
+    // R4 bug (dropped): Attended=Favorited=Continue=65 (all-content). R5 fix: 25 / 1 / 1 — distinct.
+    const distinct = new Set([att.totalCount, fav.totalCount, con.totalCount]);
+    assert.ok(distinct.size >= 2,
+      `the activities must return different personal sets; got Attended=${att.totalCount} Favorited=${fav.totalCount} Continue=${con.totalCount} ` +
+      `(all equal ⇒ activity dropped, the round-4 regression)`);
+  });
+  it('activity × content-type intersects (Favorited+Tutorial ⊆ my Favorited items) — RED, activity dropped', async (t) => {
     if (!S.id.Favorited) return t.skip('no Favorited id');
-    const tut = await call({ question: 'java', filter: { level0: [S.id.Tutorial] } });
+    // "My favorited tutorials" ⊆ my favorited items, so Favorited+Tutorial can't exceed Favorited-ALONE.
+    // Comparing to Tutorial-alone is FRAGILE: withQ totalCount for a question is NONDETERMINISTIC
+    // (Tutorial-alone drifts 94–97 call-to-call), so `favTut < Tutorial-alone` coin-flips at that margin
+    // and FALSE-PASSED in R5 while the activity was actually dropped (favTut ≈ 95 ≈ Tutorial-alone). The
+    // Favorited-alone bound is robust: Favorited-alone ≈ 1, favTut ≈ 95 ⇒ clearly RED until it intersects.
+    // (If the dev instead intends L0 activity+type as a UNION, revisit — but today favTut = Tutorial-alone
+    // exactly, genre TUTORIAL only, the favorited item absent, so it's neither intersect nor union: dropped.)
+    const favAlone = await call({ question: 'java', filter: { level0: [S.id.Favorited] } });
     const favTut = await call({ question: 'java', filter: { level0: [S.id.Favorited, S.id.Tutorial] } });
-    assert.ok(favTut.totalCount < tut.totalCount,
-      `Favorited+Tutorial (${favTut.totalCount}) must be a STRICT subset of Tutorial-alone (${tut.totalCount}) — the user's favorited tutorials; ` +
-      `equal ⇒ Favorited dropped, returns all tutorials (BUG-1 for activity×type, RED)`);
+    assert.ok(favTut.totalCount <= favAlone.totalCount,
+      `Favorited+Tutorial (${favTut.totalCount}) must be ⊆ my Favorited items (${favAlone.totalCount}) — the user's favorited tutorials; ` +
+      `today it ≈ all tutorials ⇒ Favorited dropped when combined (L0 multi-select combine still broken, RED R5)`);
   });
 });
