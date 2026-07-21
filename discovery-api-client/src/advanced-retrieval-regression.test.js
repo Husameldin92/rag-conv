@@ -70,6 +70,68 @@
  *       (9 dup ids across pages, was 35 in R4). Documented; suite runs withQ (clean counts).
  *     → after this round's honest suite fixes: 32 tests, 27 green · 4 red · 1 todo (reds = 3
  *       content-type union + 1 activity×type; the R5 G false-red and activity×type false-green fixed).
+ *   2026-07-07 (round 6 — dev says "fixed"; re-verified as the real MLcon user + two SPEC changes):
+ *     • CORRECTED SPEC: level0 is a PURE UNION (OR/addition), ACTIVITIES INCLUDED — Tutorial+Attended =
+ *       all tutorials ∪ all attended (NOT the intersection "my attended tutorials"). The round-4/5
+ *       "activity × type INTERSECTS" assertion is REVERSED to a UNION check and moved into the new
+ *       LEVEL-0-UNION block: Favorited+Tutorial must CONTAIN the favorited id (FSLE) and be ≥ Tutorial-alone.
+ *     • WITH-Q vs NO-Q SPLIT (measured twice, deterministic): the NO-QUESTION (browse) path now UNIONS
+ *       PERFECTLY — every combine's totalCount is the EXACT sum of its singles: Conf+Tut 2998=2920+78,
+ *       Tutorial+Attended 1353=1275+78, Fav+Tut 80=78+2, all-5 6294=exact sum. This REVERSES round 4
+ *       (no-Q Conf+Tut was 537≈536 = broken) ⇒ the deploy FIXED the browse path. The WITH-QUESTION
+ *       (semantic) path still COLLAPSES a multi-select to one facet — Conf+Tut→Conf 53, Tut+Attended→
+ *       Attended 24-25, all-5→Article 65 — EXCEPT Favorited+Tutorial (95-97 = Tutorial + the 1 favorited
+ *       FSLE, id present), the lone with-Q combine that unions. ⇒ the union bug is now ISOLATED TO THE
+ *       QUESTION PATH (Husam's hypothesis CONFIRMED).
+ *     • NEW LEVEL-0-UNION block: 4 no-Q union GREEN guards + withQ Fav+Tut union GREEN + withQ
+ *       Tut+Attended & withQ all-5 union RED (surviving question-path collapse). Removed the old
+ *       activity×type-INTERSECT red (spec reversed). The 3 existing withQ content-type union reds stay.
+ *     • Round-5 fixes still HOLD: activity-alone distinct (withQ 25/1/1, no-Q 1275/2/10); L3 track
+ *       union (AI Agents 4 + AI Dev Tools 53 → 56 > 53). NOTE: no-Q single totals ballooned since R5
+ *       (Conference-alone no-Q 543→2920) — the browse retrieval was re-scoped, flagged to the dev.
+ *     → 38 tests, 32 green · 5 red · 1 todo (reds = 3 withQ content-type union + withQ Tut+Attended +
+ *       withQ all-5 — all the surviving WITH-QUESTION multi-select collapse).
+ *   2026-07-08 (round 7 — dev moved it BACK to To Verify, asked to mirror the browse fix onto the
+ *     semantic query; re-verified as the real MLcon user, measured twice → deterministic):
+ *     • WITH-QUESTION path UNCHANGED — the fix did NOT land on the semantic query. All 3 collapses
+ *       persist, order-independent (forward = reversed): Conf+Tut → 52 = Conf-alone (0 TUTORIAL over
+ *       6 pages to the end); Tutorial+Attended → 28 with genre tally {RHEINGOLD:27, TUTORIAL:1} = all
+ *       27 attended + exactly 1 stray tutorial (a real union carries ~97) ⇒ collapsed to Attended;
+ *       all-5 → 65 = Article-alone. Favorited+Tutorial STILL the lone with-Q union (97 = tutorials +
+ *       the 1 favorited FSLE, id present). ⇒ ZERO of the 5 with-question reds flipped green. BUG 1's
+ *       last head (the semantic path) is NOT fixed.
+ *     • NO-REGRESSION all holds: no-Q union still EXACT-SUM in all 4 (Conf+Tut 3034=2956+78,
+ *       Tut+Attended 1353=78+1275, Fav+Tut 80=78+2, all-5 6330=exact sum); activity-alone distinct
+ *       (withQ 27/1/3, no-Q 1275/2/10); L3 track unions (AI Agents 4 + AI Dev Tools 54 → 56); BUG 2
+ *       item name/title/isSelected populate; results[].score still 10/10 null (open Q, todo).
+ *     • ~5× no-Q totals (R6 flag): STABLE, not fluctuating — R7 ≈ R6 (Conf-alone no-Q 2956 vs 2920,
+ *       ratio ~1.0×). The R5→R6 browse re-scope has held; looks intended, still a dev confirm item.
+ *     • SUITE FIX (nondeterminism, honest): rebased the withQ Fav+Tut GREEN guard OFF the fragile
+ *       "tc ≥ Tutorial-alone − 3" count bound (it FALSE-FAILED in R7 when Tutorial-alone drifted to 103
+ *       while Fav+Tut read 97) ONTO a genre/id-presence union proof (combined set must carry BOTH the
+ *       TUTORIAL facet and the favorited item) — immune to the withQ ±6 count swing. Same fix pattern
+ *       as R5's activity×type rebase. No product assertion weakened; the union is proven by set content.
+ *     → 38 tests, 32 green · 5 red · 1 todo (reds UNCHANGED = 3 withQ content-type union + withQ
+ *       Tut+Attended + withQ all-5). None flipped. The with-question collapse is the whole red set.
+ *   2026-07-09 (round 8 — dev bounced it back a 2ND time; re-verified as the real MLcon user,
+ *     measured 3× → deterministic): ✅ FIXED. The dev FINALLY mirrored the browse-path union onto the
+ *     SEMANTIC (with-question) query. All 4 with-question level-0 combines now UNION, order-independent:
+ *       Conf+Tut → 149-155 = 52+97 exact sum, both RHEINGOLD+TUTORIAL genres (R7 was 52 = Conf-alone);
+ *       Tutorial+Attended → 121-130 = 97+24, both genres, [T,A] & [A,T] both union (R7 was 28 = Att+1);
+ *       all-5 → 454-461 ≈ sum, ALL 5 genres present (R7 was 65 = Article-alone);
+ *       Favorited+Tutorial → 98-104 = tutorials + the favorited FSLE (already unioned, still does).
+ *     ⇒ ALL 5 with-question reds FLIP GREEN. BUG 1 is now FULLY fixed (browse + semantic paths union).
+ *     • NO-REGRESSION all holds: no-Q union still EXACT-SUM (Conf+Tut 3042=2964+78, Tut+Attended
+ *       1353=78+1275, Fav+Tut 80=78+2, all-5 6351=exact sum); activity-alone distinct (withQ 24/1/3,
+ *       no-Q 1275/2/10); L3 track unions (AI Agents 4 + AI Dev Tools → BOTH max 61 > single max 59,
+ *       re-measured ×3 — a single probe draw of 57<59 was nondeterminism, NOT a regression); BUG 2
+ *       item name/title/isSelected populate; results[].score still 10/10 null (open Q, todo).
+ *     • withQ nondeterminism persists (Tutorial-alone 97↔103, Attended 24↔27, Camp 89↔171) — the now-
+ *       GREEN union assertions clear it with margin (e.g. Tut+Attended min 121 > Tutorial-alone max 103).
+ *     • ~5× no-Q totals: STABLE (R8 ≈ R7, ratio ~1.0×) — the R5→R6 browse re-scope has held.
+ *     → 38 tests, 37 green · 0 red · 1 todo. The 5 with-question reds all flipped; only the score
+ *       open-question stays `todo`. NOTE: the RED-labelled assertions below now PASS — their titles/
+ *       comments are kept but annotated "(GREEN R8)" so history reads straight.
  * ─────────────────────────────────────────────────────────────────────────────────────────────────
  *
  * ⚠️ RUN BY EXPLICIT PATH ONLY — bare `node --test` would also sweep the sibling `*-test.js` probe
@@ -148,6 +210,21 @@ const level = (r, n) => (r.levels || []).find((x) => x.level === n);
 const item = (r, n, nm) => (level(r, n)?.items || []).find((i) => (i.nameEn || '').includes(nm));
 const genres = (r) => [...new Set((r.results || []).map((x) => x.parentGenre))];
 const ids = (r) => (r.results || []).map((x) => x._id);
+// Page-walk a query, gathering the distinct result-id set + genre set (Round 6 union checks). Used to
+// detect whether a 2nd facet's items actually appear in a combined set (id-membership or a genre that
+// can only come from that facet), without paging huge no-Q sets to the end.
+async function collect(input, maxPages = 14) {
+  const idSet = new Set(), gSet = new Set(); let page = 1, tc = null;
+  while (page <= maxPages) {
+    const r = await call({ ...input, page });
+    tc = r.totalCount ?? tc;
+    for (const x of (r.results || [])) { idSet.add(x._id); gSet.add(x.parentGenre === null ? 'null' : x.parentGenre); }
+    if ((r.resultCount || 0) < 10) break;
+    if (tc != null && page * 10 >= tc) break;
+    page++;
+  }
+  return { idSet, gSet, tc };
+}
 
 // GENRE key for correctness (Camp emits CAMP or FLEX_CAMP; Article emits null)
 const GENRE = { Conference: ['RHEINGOLD'], Tutorial: ['TUTORIAL'], 'Live Event': ['FSLE'], Camp: ['CAMP', 'FLEX_CAMP'] };
@@ -356,7 +433,7 @@ describe('OPEN QUESTION — results[].score (todo: dev to confirm if score belon
   });
 });
 
-describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "just ranking" claim disproven, R3 2026-07-02)', () => {
+describe('BUG 1 — content-type multi-select UNION, WITH-QUESTION path (GREEN R8 — semantic path now unions; was RED R2–R7)', () => {
   it('Conf+Tut totalCount exceeds the LARGER single type (a true union can’t be smaller than either alone)', async () => {
     const conf = await call({ question: 'java', filter: { level0: [S.id.Conference] } });
     const tut = await call({ question: 'java', filter: { level0: [S.id.Tutorial] } });
@@ -367,7 +444,7 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
     // set here), so a partial fix that collapsed to Tutorial-alone would have passed it falsely.
     assert.ok(both.totalCount > floor,
       `combined totalCount (${both.totalCount}) must exceed the larger single type (Conf ${conf.totalCount}, Tut ${tut.totalCount} → floor ${floor}); ` +
-      `today it equals Conference-alone (${conf.totalCount}) ⇒ Tutorial dropped (BUG-1, still RED 2026-07-02)`);
+      `GREEN R8 (149-155 = 52+97 exact-sum union); would fail only if the semantic path regressed to collapse (R2-R7: 52 = Conf-alone)`);
   });
   it('union is order-independent: [Tutorial, Conference] must also union, not collapse to one type', async () => {
     const conf = await call({ question: 'java', filter: { level0: [S.id.Conference] } });
@@ -376,7 +453,7 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
     const floor = Math.max(conf.totalCount, tut.totalCount);
     assert.ok(swapped.totalCount > floor,
       `[Tutorial,Conference] combined totalCount (${swapped.totalCount}) must exceed the larger single type (floor ${floor}); ` +
-      `today both orders collapse to Conference-alone (${conf.totalCount}) ⇒ order-independent drop (BUG-1, still RED)`);
+      `GREEN R8 (both [Conf,Tut] & [Tut,Conf] union, ~149-155); would fail only if order-dependent collapse returned (R2-R7)`);
   });
   // The dev claimed the all-RHEINGOLD result was "just ranking — page further and tutorials show up".
   // Rebuttal encoded here: page the ENTIRE set (up to 20 pages, stopping only at the true last page),
@@ -394,7 +471,7 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
       page++;
     }
     assert.ok(union.has('RHEINGOLD') && union.has('TUTORIAL'),
-      `both genres must surface across the whole set (walked ${pagesWalked} page(s), totalCount ${tc}); saw ${JSON.stringify([...union])} — TUTORIAL never appears ⇒ dropped, not merely low-ranked (BUG-1, still RED R3)`);
+      `both genres must surface across the whole set (walked ${pagesWalked} page(s), totalCount ${tc}); saw ${JSON.stringify([...union])} — GREEN R8 (both RHEINGOLD+TUTORIAL now surface; R2-R7 TUTORIAL never appeared ⇒ dropped)`);
   });
   // Same union defect verified at L3 (Session/Track), a canMultiSelect:true level. Two non-empty
   // tracks combined must exceed the larger alone; today it collapses to one track's set.
@@ -415,6 +492,99 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
   });
 });
 
+// ============================================================ LEVEL 0 UNION — Round 6 (with-Q vs no-Q)
+// Round 6 CORRECTED SPEC: level0 is a PURE UNION (OR/addition), ACTIVITIES INCLUDED — every selected
+// item's set is OR'd (Tutorial+Attended = all tutorials ∪ all attended, NOT "my attended tutorials").
+// Round 6 finding (real MLcon user, 2026-07-07, measured twice → deterministic):
+//   • NO-QUESTION (browse) path UNIONS PERFECTLY — every combine totalCount = the EXACT sum of its
+//     singles: Conf+Tut 2998=2920+78 · Tut+Attended 1353=1275+78 · Fav+Tut 80=78+2 · all-5 6294=sum.
+//     This REVERSES round 4 (no-Q Conf+Tut 537≈536 = broken) ⇒ the deploy fixed the browse path.
+//   • WITH-QUESTION (semantic) path still COLLAPSES a multi-select to one facet — Conf+Tut→Conf 53,
+//     Tut+Attended→Attended 24-25, all-5→Article 65 — EXCEPT Favorited+Tutorial, which unions in BOTH
+//     modes (withQ 95-97 = Tutorial + the 1 favorited FSLE item, id present). ⇒ the union bug is now
+//     ISOLATED TO THE QUESTION PATH (Husam's hypothesis confirmed).
+// GREEN = the no-question union fix (guarded) + Fav+Tut union. RED = surviving with-question collapse.
+describe('LEVEL 0 UNION — corrected spec (pure UNION, activities included), with-Q vs no-Q (Round 6)', () => {
+  // ---- NO-QUESTION (browse) path — FIXED, green guards ----
+  it('no-Q: Conf+Tut UNIONS — combined > larger single (browse path fixed; R4 was broken)', async () => {
+    const conf = await call({ filter: { level0: [S.id.Conference] } });
+    const tut = await call({ filter: { level0: [S.id.Tutorial] } });
+    const both = await call({ filter: { level0: [S.id.Conference, S.id.Tutorial] } });
+    assert.ok(both.totalCount > Math.max(conf.totalCount, tut.totalCount),
+      `no-question Conf+Tut (${both.totalCount}) must exceed the larger single (Conf ${conf.totalCount}, Tut ${tut.totalCount}); ` +
+      `R6: 2998 = 2920+78 exact-sum union. R4 was 537≈Conf-alone (broken) ⇒ the deploy fixed the browse path.`);
+  });
+  it('no-Q: Tutorial+Attended UNIONS — activity+type ADD (corrected spec: NOT the "my attended tutorials" intersection)', async (t) => {
+    if (!S.id.Attended) return t.skip('no Attended id');
+    const tut = await call({ filter: { level0: [S.id.Tutorial] } });
+    const att = await call({ filter: { level0: [S.id.Attended] } });
+    const both = await call({ filter: { level0: [S.id.Tutorial, S.id.Attended] } });
+    assert.ok(both.totalCount > Math.max(tut.totalCount, att.totalCount),
+      `no-question Tutorial+Attended (${both.totalCount}) must exceed the larger single (Tut ${tut.totalCount}, Att ${att.totalCount}) — ` +
+      `a UNION of all tutorials ∪ all attended, not an intersection. R6: 1353 = 78+1275 exact sum.`);
+  });
+  it('no-Q: Favorited+Tutorial UNIONS — contains the favorited item + tc ≥ Tutorial-alone (corrected spec)', async (t) => {
+    if (!S.id.Favorited) return t.skip('no Favorited id');
+    const favAlone = await call({ filter: { level0: [S.id.Favorited] } });
+    const favIds = new Set((favAlone.results || []).map((x) => x._id));
+    const tut = await call({ filter: { level0: [S.id.Tutorial] } });
+    const both = await collect({ filter: { level0: [S.id.Favorited, S.id.Tutorial] } });
+    // Under the UNION spec Fav+Tut = all tutorials ∪ my favorites → must CONTAIN the favorited item
+    // (its id, or a genre that can only come from it since Tutorial→TUTORIAL) and be ≥ Tutorial-alone.
+    const favPresent = [...favIds].some((id) => both.idSet.has(id)) || [...both.gSet].some((g) => g !== 'TUTORIAL');
+    assert.ok(favPresent && both.tc >= tut.totalCount,
+      `no-question Favorited+Tutorial (tc ${both.tc}) must be a UNION: contain the favorited item (favPresent=${favPresent}) AND be ≥ Tutorial-alone (${tut.totalCount}). R6: 80 = 78+2, both genres present.`);
+  });
+  it('no-Q: all-5 content-types UNION — combined exceeds the largest single', async () => {
+    const cids = [S.id.Conference, S.id.Tutorial, S.id.Article, S.id['Live Event'], S.id.Camp];
+    const singles = [];
+    for (const cid of cids) singles.push((await call({ filter: { level0: [cid] } })).totalCount);
+    const all = await call({ filter: { level0: cids } });
+    assert.ok(all.totalCount > Math.max(...singles),
+      `no-question all-5 (${all.totalCount}) must exceed the largest single (${Math.max(...singles)}); R6: 6294 = exact sum of all five.`);
+  });
+
+  // ---- WITH-QUESTION (semantic) path — Fav+Tut unions (GREEN); the rest still collapse (RED) ----
+  // FLIPPED from the round-4/5 "activity × type INTERSECTS (Fav+Tut ⊆ Favorited)" assertion to the
+  // corrected UNION spec. R6: this passes on the question path (97 = 96 tutorials + 1 favorited FSLE,
+  // id present) — the lone with-question combine that unions, so it's a green guard, not a red.
+  it('withQ: Favorited+Tutorial UNIONS — combined set carries BOTH facets (favorite + tutorials) (corrected spec; GREEN)', async (t) => {
+    if (!S.id.Favorited) return t.skip('no Favorited id');
+    const favAlone = await call({ question: 'java', filter: { level0: [S.id.Favorited] } });
+    const favIds = new Set((favAlone.results || []).map((x) => x._id));
+    const both = await collect({ question: 'java', filter: { level0: [S.id.Favorited, S.id.Tutorial] } });
+    // Union proof IMMUNE to withQ count nondeterminism (Tutorial-alone drifts 97↔103, so an R6-style
+    // "tc ≥ Tutorial-alone − 3" bound FALSE-FAILED in R7 when Fav+Tut read 97 against a 103 Tutorial-alone).
+    // Instead assert the combined set carries BOTH facets by CONTENT: the Tutorial facet (genre TUTORIAL)
+    // AND the Favorited facet (its result id, or its non-TUTORIAL genre — the favorited item is an FSLE
+    // Live Event, so any non-TUTORIAL genre can only come from it). Both present ⇒ real union, not a collapse.
+    const tutPresent = both.gSet.has('TUTORIAL');
+    const favPresent = [...favIds].some((id) => both.idSet.has(id)) || [...both.gSet].some((g) => g !== 'TUTORIAL');
+    assert.ok(tutPresent && favPresent,
+      `with-question Favorited+Tutorial must UNION — combined set must carry both the Tutorial facet (tutPresent=${tutPresent}) and the favorited item (favPresent=${favPresent}); tc=${both.tc}, genres=${JSON.stringify([...both.gSet])}. R6/R7: 97 = tutorials + the 1 favorited FSLE ⇒ the lone with-question combine that unions.`);
+  });
+  it('withQ: Tutorial+Attended UNIONS (GREEN R8 — semantic path now adds the activity + type)', async (t) => {
+    if (!S.id.Attended) return t.skip('no Attended id');
+    const tut = await call({ question: 'java', filter: { level0: [S.id.Tutorial] } });
+    const att = await call({ question: 'java', filter: { level0: [S.id.Attended] } });
+    const both = await call({ question: 'java', filter: { level0: [S.id.Tutorial, S.id.Attended] } });
+    // GREEN R8: Tutorial ∪ Attended (disjoint — TUTORIAL vs RHEINGOLD) = tut + att. R8 measured 121-130 =
+    // 97+24, clears Tutorial-alone (≤103) with ~18 margin, so the withQ ±count drift can't false-fail it.
+    assert.ok(both.totalCount > Math.max(tut.totalCount, att.totalCount),
+      `with-question Tutorial+Attended (${both.totalCount}) must union > larger single (Tut ${tut.totalCount}, Att ${att.totalCount}); ` +
+      `GREEN R8 (121-130 = tutorials ∪ attended); R2-R7 was 24-28 ≈ Attended-alone ⇒ Tutorial dropped.`);
+  });
+  it('withQ: all-5 content-types UNION (GREEN R8 — semantic path unions all five)', async () => {
+    const cids = [S.id.Conference, S.id.Tutorial, S.id.Article, S.id['Live Event'], S.id.Camp];
+    const singles = [];
+    for (const cid of cids) singles.push((await call({ question: 'java', filter: { level0: [cid] } })).totalCount);
+    const all = await call({ question: 'java', filter: { level0: cids } });
+    assert.ok(all.totalCount > Math.max(...singles),
+      `with-question all-5 (${all.totalCount}) must exceed the largest single (${Math.max(...singles)}); ` +
+      `GREEN R8 (454-461 ≈ sum, all 5 genres present); R2-R7 was 65 = Article-alone ⇒ collapsed.`);
+  });
+});
+
 // ============================================================ ACTIVITY — RED (dropped, round 4)
 // Round 4 (real MLcon user) made the activity bug decisive: selecting an activity does NOT constrain to
 // the user's own content. Attended / Favorited / Continue all return the SAME result set, and it equals
@@ -427,7 +597,7 @@ describe('BUG 1 — content-type multi-select must UNION (STILL RED — dev\'s "
 // activity-alone assertions below are now GREEN guards. Activity × content-type is STILL broken (the
 // activity is dropped when combined at L0) — that assertion stays RED, rebased onto a nondeterminism-proof
 // bound (see its comment).
-describe('ACTIVITY — must constrain to the user\'s content (activity-alone FIXED R5; activity×type still RED)', () => {
+describe('ACTIVITY — activity-alone must be a personal subset (FIXED R5/R6; activity×type UNION moved to the LEVEL 0 UNION block per the corrected spec)', () => {
   it('an activity-alone selection is a personal subset (Attended < all-content-types) — GREEN R5', async (t) => {
     if (!S.id.Attended) return t.skip('no Attended id');
     const attended = await call({ question: 'java', filter: { level0: [S.id.Attended] } });
@@ -447,19 +617,8 @@ describe('ACTIVITY — must constrain to the user\'s content (activity-alone FIX
       `the activities must return different personal sets; got Attended=${att.totalCount} Favorited=${fav.totalCount} Continue=${con.totalCount} ` +
       `(all equal ⇒ activity dropped, the round-4 regression)`);
   });
-  it('activity × content-type intersects (Favorited+Tutorial ⊆ my Favorited items) — RED, activity dropped', async (t) => {
-    if (!S.id.Favorited) return t.skip('no Favorited id');
-    // "My favorited tutorials" ⊆ my favorited items, so Favorited+Tutorial can't exceed Favorited-ALONE.
-    // Comparing to Tutorial-alone is FRAGILE: withQ totalCount for a question is NONDETERMINISTIC
-    // (Tutorial-alone drifts 94–97 call-to-call), so `favTut < Tutorial-alone` coin-flips at that margin
-    // and FALSE-PASSED in R5 while the activity was actually dropped (favTut ≈ 95 ≈ Tutorial-alone). The
-    // Favorited-alone bound is robust: Favorited-alone ≈ 1, favTut ≈ 95 ⇒ clearly RED until it intersects.
-    // (If the dev instead intends L0 activity+type as a UNION, revisit — but today favTut = Tutorial-alone
-    // exactly, genre TUTORIAL only, the favorited item absent, so it's neither intersect nor union: dropped.)
-    const favAlone = await call({ question: 'java', filter: { level0: [S.id.Favorited] } });
-    const favTut = await call({ question: 'java', filter: { level0: [S.id.Favorited, S.id.Tutorial] } });
-    assert.ok(favTut.totalCount <= favAlone.totalCount,
-      `Favorited+Tutorial (${favTut.totalCount}) must be ⊆ my Favorited items (${favAlone.totalCount}) — the user's favorited tutorials; ` +
-      `today it ≈ all tutorials ⇒ Favorited dropped when combined (L0 multi-select combine still broken, RED R5)`);
-  });
+  // NOTE (R6): the round-4/5 "activity × content-type INTERSECTS (Favorited+Tutorial ⊆ my Favorited
+  // items)" assertion was REVERSED by the corrected spec (level0 is a pure UNION, activities included)
+  // and moved to the LEVEL 0 UNION block as a union check (Fav+Tut must CONTAIN the favorited id and
+  // exceed Tutorial-alone). It is not re-declared here.
 });

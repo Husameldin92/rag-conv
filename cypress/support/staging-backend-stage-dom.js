@@ -3,7 +3,7 @@
  * No regex on merged page text — same values you see in the table.
  */
 
-const { textFromNodeDeep, querySelectorAllDeep } = require('./perf-shadow-text')
+const { textFromNodeDeep, querySelectorAllDeep, querySelectorDeep } = require('./perf-shadow-text')
 
 // Stage name pattern. Allows the renamed-on-2026-05-28 stage
 // "discovery:canUserAccessRag + vectorSearchResult" (spaces + plus signs)
@@ -191,22 +191,103 @@ function extractLlmAnswerText(body) {
 
   if (!lastTotalMatch) return ''
 
-  const textAfterTable = fullText.slice(lastTotalMatch.index + lastTotalMatch[0].length).trim()
-  if (!textAfterTable) return ''
+  let answer = fullText.slice(lastTotalMatch.index + lastTotalMatch[0].length).trim()
+  if (!answer) return ''
 
   // Trim any Performance Metrics section that may follow the answer (if present in innerText)
   const perfRe = /Performance\s+Metrics|Leistungsmetriken|Leistungs\s*metriken/gi
-  const pmMatch = perfRe.exec(textAfterTable)
-  if (pmMatch) {
-    return textAfterTable.slice(0, pmMatch.index).trim()
+  const pmMatch = perfRe.exec(answer)
+  if (pmMatch) answer = answer.slice(0, pmMatch.index)
+
+  // Trim trailing UI chrome that innerText picks up after the answer: the copy button
+  // ("content_copy"), the sources footer, the composer placeholder, and the AI disclaimer.
+  // (These sit after the answer + any suggested-follow-up prompts on dev-kiosk.)
+  for (const marker of ['content_copy', 'entwickler intelligence nutzt KI']) {
+    const ci = answer.indexOf(marker)
+    if (ci >= 0) {
+      answer = answer.slice(0, ci)
+      break
+    }
   }
 
-  return textAfterTable
+  return answer.trim()
+}
+
+// =============================================================================
+// Fallback answer capture for environments that DON'T render the backend Stage
+// table (e.g. staging.entwickler.de as of 2026-07-06 — the normal `discovery`
+// path emits no Stage table, so `extractLlmAnswerText` (which anchors on the
+// "Total … ms" row) returns ''). Here we read the answer straight from the
+// conversation component. dev-kiosk still renders the table, so it keeps using
+// the Stage-table path — this is only a fallback when no table exists.
+// =============================================================================
+
+const CONVERSATION_SELECTOR = 'readerapp-ai-conversation-display'
+
+// Placeholder text shown while the model is still working. Only the specific UI
+// strings the app renders ("Denke nach…", "Formuliere Antwort…") — NOT generic
+// words like "Thinking"/"Generating", which occur in real answers and would make
+// a finished answer look like it is still streaming.
+const ANSWER_PENDING_RE = /Denke nach|Formuliere Antwort/i
+
+/** Raw deep text of the conversation component ('' if not present). */
+function getConversationDisplayText(body) {
+  if (!body) return ''
+  const conv = querySelectorDeep(body, CONVERSATION_SELECTOR)
+  return conv ? String(textFromNodeDeep(conv) || '').replace(/ /g, ' ').trim() : ''
+}
+
+/** True while the answer is still streaming / not yet started. */
+function conversationAnswerPending(body) {
+  const t = getConversationDisplayText(body)
+  return !t || ANSWER_PENDING_RE.test(t)
+}
+
+/**
+ * Extract just the answer from the conversation component: strip the leading
+ * (echoed) question and the trailing copy/sources footer. Inline citation chips
+ * stay in the text (that's what the user sees). Returns '' if nothing usable.
+ *
+ * @param {HTMLElement} body
+ * @param {string} question exact question that was sent (to strip the echo)
+ */
+function extractAnswerFromConversation(body, question) {
+  let text = getConversationDisplayText(body)
+  if (!text) return ''
+
+  // Cut the trailing footer (copy button + "Quellen"/sources list).
+  for (const marker of ['content_copy', 'Quellenclose']) {
+    const ci = text.indexOf(marker)
+    if (ci >= 0) {
+      text = text.slice(0, ci)
+      break
+    }
+  }
+
+  // Strip the echoed question prefix (exact match, then whitespace-insensitive).
+  if (question) {
+    const q = String(question).trim()
+    const exact = text.indexOf(q)
+    if (exact >= 0) {
+      text = text.slice(exact + q.length)
+    } else {
+      const rx = new RegExp(
+        q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*')
+      )
+      const m = rx.exec(text)
+      if (m) text = text.slice(m.index + m[0].length)
+    }
+  }
+
+  return text.trim()
 }
 
 module.exports = {
   extractBackendStageTableFromDom,
   findBackendStageTableElement,
   backendStageTableDomReady,
-  extractLlmAnswerText
+  extractLlmAnswerText,
+  getConversationDisplayText,
+  conversationAnswerPending,
+  extractAnswerFromConversation
 }
