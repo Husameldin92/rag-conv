@@ -24,7 +24,8 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ENDPOINT = process.env.GRAPHQL_ENDPOINT || 'https://concord.sandsmedia.com/graphql';
-const CSV_PATH = '/Users/osmanhusam/Desktop/Claude-Homebase/02 Projects/Work/RAG/Features/Backend RAG Queries (BACKEND-1602-1603)/collections_relationship.csv';
+// Drive path is the default; override with CSV_PATH env var or a CLI arg so this survives the next move.
+const CSV_PATH = process.env.CSV_PATH || process.argv[2] || '/Users/osmanhusam/Library/CloudStorage/GoogleDrive-hossamossman92@gmail.com/Meine Ablage/Claude-Homebase/02 Projects/Work/RAG/Features/Backend RAG Queries (BACKEND-1602-1603)/collections_relationship.csv';
 const DELAY = 1500, TIMEOUT = 30000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
