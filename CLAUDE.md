@@ -47,15 +47,22 @@ Run `whoami` at the start of the session:
 
 - **`osmanhusam` → OLD Mac.** The Drive workspace reads normally at
   `~/Library/CloudStorage/GoogleDrive-hossamossman92@gmail.com/Meine Ablage/Claude-Homebase`.
-- **`hosman` → NEW Mac.** That path returns **`Operation not permitted`** from a shell. This is
-  **macOS TCC, not a missing mount and not a sync problem**, and it persists with sandboxing disabled.
+- **`hosman` → NEW Mac.** ✅ **The Drive workspace reads normally here too, as of 2026-08-21.**
 
-⛔ **Never conclude the workspace is missing, unmounted or out of sync because a shell 403s there.**
-⛔ **Never ask Husam to debug this or explain it to him** — he has ruled he does not want to know (19.08).
+**RESOLVED 2026-08-21 — the old warning is kept only so nobody re-derives it.** Between 19.08 and 21.08
+this path returned `Operation not permitted` from a shell on the new Mac; that was **macOS TCC**, and Full
+Disk Access has since been granted. Verified 21.08 by reading a workspace file straight off the Drive path
+with `sed`, no Finder copy involved — and re-confirmed 27.08.2026, when a Claude Code run on the new Mac
+read its handover and build spec, and wrote its handback, directly from that path.
 
-**On the new Mac, to read a workspace file (a handover, a spec, a plan):** ask him to drag it into the chat,
-or duplicate it to `~/Downloads` in Finder — Finder holds the permission grant, the shell does not. One line,
-no explanation. Do not spend time debugging the path.
+⛔ **Do not reintroduce the "ask Husam to drag the file into chat / duplicate it in Finder" workaround** —
+it is no longer needed and costs a round-trip.
+⛔ **Never ask Husam to debug TCC or explain it to him** — he has ruled he does not want to know (19.08).
+That ruling stands even though the symptom is gone.
 
-_Added 2026-08-19. **`~/dev` is cloned per machine, so this block does not travel by itself — commit and
+⚠️ If a shell ever 403s on that path again, Full Disk Access has been revoked (an OS update can do it) —
+**it is never a missing mount and never a sync problem.** Say so in one line and use the Finder copy as a
+fallback; do not spend the session debugging it.
+
+_Added 2026-08-19, corrected 2026-08-21, re-confirmed 2026-08-27. **`~/dev` is cloned per machine, so this block does not travel by itself — commit and
 push it, then `git pull` on the other Mac.**_
